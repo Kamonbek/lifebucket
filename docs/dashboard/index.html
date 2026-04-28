@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Life OS Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #121a2f;
+      --muted: #8ea0c9;
+      --text: #e6ecff;
+      --accent: #5eead4;
+      --good: #22c55e;
+      --bad: #f97316;
+      --warn: #facc15;
+      --border: #26304c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: radial-gradient(circle at 20% -10%, #1a2650 0%, var(--bg) 45%);
+      color: var(--text);
+    }
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    .header { display:flex; justify-content:space-between; align-items:end; gap: 12px; margin-bottom: 18px; }
+    h1 { margin: 0; font-size: 28px; }
+    .sub { color: var(--muted); font-size: 14px; }
+
+    .grid { display:grid; grid-template-columns: repeat(12, 1fr); gap: 14px; }
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0));
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      backdrop-filter: blur(2px);
+    }
+    .kpi { grid-column: span 3; }
+    .wide { grid-column: span 8; }
+    .mid { grid-column: span 6; }
+    .narrow { grid-column: span 4; }
+    .full { grid-column: span 12; }
+    @media (max-width: 980px) {
+      .kpi,.wide,.mid,.narrow,.full { grid-column: span 12; }
+    }
+
+    .kpi-title { color: var(--muted); font-size: 13px; }
+    .kpi-value { font-size: 30px; font-weight: 700; margin-top: 4px; }
+    .badge { display:inline-block; padding: 4px 8px; border-radius: 999px; font-size:12px; margin-top: 8px; border: 1px solid var(--border); }
+    .badge.good { color: #86efac; }
+    .badge.warn { color: #fde68a; }
+    .badge.bad { color: #fdba74; }
+
+    .section-title { font-size: 16px; margin: 0 0 10px 0; }
+    .meter-row { margin-bottom: 12px; }
+    .meter-head { display:flex; justify-content:space-between; font-size:13px; color:var(--muted); margin-bottom:6px; }
+    .bar { height: 12px; width: 100%; background: #0f172a; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
+    .bar > span { display:block; height:100%; background: linear-gradient(90deg, #2dd4bf, #60a5fa); }
+
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align:left; padding: 8px; border-bottom: 1px solid var(--border); font-size: 13px; }
+    th { color: var(--muted); font-weight: 600; }
+
+    .note { color: var(--muted); font-size: 12px; margin-top: 8px; }
+    .pill { border:1px solid var(--border); border-radius:8px; padding:2px 8px; font-size:12px; }
+    .ok { color: #86efac; } .off { color: #fdba74; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1>Life OS Dashboard</h1>
+        <div class="sub" id="updatedAt">Loading real data...</div>
+      </div>
+      <div class="sub">Data source: /workspace/life-os/logs/*.csv</div>
+    </div>
+
+    <div class="grid">
+      <div class="card kpi">
+        <div class="kpi-title">Execution score</div>
+        <div class="kpi-value" id="kpiScore">--</div>
+        <div class="badge" id="kpiTrend">--</div>
+      </div>
+      <div class="card kpi">
+        <div class="kpi-title">30d Net Income</div>
+        <div class="kpi-value" id="kpiNet">--</div>
+        <div class="badge" id="kpiIncomeStatus">--</div>
+      </div>
+      <div class="card kpi">
+        <div class="kpi-title">Project Risk</div>
+        <div class="kpi-value" id="kpiRisk">--</div>
+        <div class="badge" id="kpiRiskBadge">--</div>
+      </div>
+      <div class="card kpi">
+        <div class="kpi-title">Streak (main task)</div>
+        <div class="kpi-value" id="kpiStreak">--</div>
+        <div class="badge good">Consistency</div>
+      </div>
+
+      <div class="card wide">
+        <h3 class="section-title">Goal Progress Bars</h3>
+        <div id="progressBars"></div>
+        <div class="note">Targets come from config/metrics_targets.csv. Real data updates automatically from logs.</div>
+      </div>
+
+      <div class="card narrow">
+        <h3 class="section-title">On Track / Off Track</h3>
+        <table>
+          <thead><tr><th>Metric</th><th>Status</th></tr></thead>
+          <tbody id="statusTable"></tbody>
+        </table>
+      </div>
+
+      <div class="card mid">
+        <h3 class="section-title">Deep Work & Learning (Daily)</h3>
+        <canvas id="hoursChart" height="180"></canvas>
+      </div>
+
+      <div class="card mid">
+        <h3 class="section-title">Income vs Expenses (30d cumulative)</h3>
+        <canvas id="moneyChart" height="180"></canvas>
+      </div>
+
+      <div class="card full">
+        <h3 class="section-title">Daily Energy</h3>
+        <canvas id="energyChart" height="100"></canvas>
+      </div>
+    </div>
+  </div>
+
+<script>
+function parseCSV(text) {
+  const lines = text.trim().split(/\r?\n/).filter(Boolean);
+  if (!lines.length) return [];
+  const headers = lines[0].split(',').map(h => h.trim());
+  return lines.slice(1).map(line => {
+    const cols = line.split(',');
+    const row = {};
+    headers.forEach((h, i) => row[h] = (cols[i] || '').trim());
+    return row;
+  });
+}
+
+const f = (n) => Number.isFinite(n) ? n : 0;
+const num = (v) => f(parseFloat(v));
+const yes = (v='') => ['yes','y','true','1'].includes(String(v).toLowerCase());
+
+async function loadCSV(path) {
+  const res = await fetch(path);
+  const txt = await res.text();
+  return parseCSV(txt);
+}
+
+function mean(arr){ return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0; }
+function pct(x){ return Math.round(x*100); }
+
+function lastNDays(rows, n, dateKey='date') {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - (n-1));
+  return rows.filter(r => {
+    const d = new Date(r[dateKey]);
+    return !isNaN(d) && d >= cutoff;
+  });
+}
+
+function streak(rows, key, type='yes', minVal=0) {
+  const sorted = [...rows].sort((a,b) => new Date(b.date) - new Date(a.date));
+  let s = 0;
+  for (const r of sorted) {
+    const ok = type === 'yes' ? yes(r[key]) : num(r[key]) >= minVal;
+    if (ok) s++; else break;
+  }
+  return s;
+}
+
+function projectRisk(projects) {
+  const active = projects.filter(p => (p.status||'').toLowerCase() === 'active');
+  let score = Math.min(active.length,5) * 12;
+  score += active.filter(p => (p.priority||'').toLowerCase() === 'high').length * 8;
+  const today = new Date();
+  for (const p of active) {
+    const d = new Date(p.deadline);
+    if (isNaN(d)) { score += 5; continue; }
+    const days = Math.floor((d - today) / 86400000);
+    if (days < 0) score += 25;
+    else if (days <= 7) score += 15;
+    else if (days <= 14) score += 8;
+  }
+  return Math.min(score, 100);
+}
+
+function trackStatus(actual, target) { return actual >= target ? 'on_track' : 'off_track'; }
+
+function makeBar(metric, actual, target, unit, status) {
+  const p = target > 0 ? Math.min((actual/target)*100, 120) : 0;
+  const color = status === 'on_track' ? 'var(--good)' : 'var(--bad)';
+  const wrap = document.createElement('div');
+  wrap.className = 'meter-row';
+  wrap.innerHTML = `
+    <div class="meter-head">
+      <span>${metric}</span>
+      <span>${actual.toFixed(2)} / ${target.toFixed(2)} ${unit || ''} • <span style="color:${color}">${status}</span></span>
+    </div>
+    <div class="bar"><span style="width:${Math.min(p,100)}%"></span></div>
+  `;
+  return wrap;
+}
+
+function cumulativeByDate(rows) {
+  const sorted = [...rows].sort((a,b) => new Date(a.date)-new Date(b.date));
+  const labels = [];
+  const vals = [];
+  let sum = 0;
+  for (const r of sorted) {
+    sum += num(r.amount);
+    labels.push(r.date);
+    vals.push(sum);
+  }
+  return { labels, vals };
+}
+
+async function main() {
+  const [daily, income, expenses, projects, targets] = await Promise.all([
+    loadCSV('../logs/daily_log.csv'),
+    loadCSV('../logs/income.csv'),
+    loadCSV('../logs/expenses.csv'),
+    loadCSV('../logs/projects.csv'),
+    loadCSV('../config/metrics_targets.csv')
+  ]);
+
+  const d7 = lastNDays(daily, 7);
+  const d30Income = lastNDays(income, 30);
+  const d30Exp = lastNDays(expenses, 30);
+
+  const avgDeep = mean(d7.map(r => num(r.deep_work_hours)));
+  const avgLearn = mean(d7.map(r => num(r.learning_hours)));
+  const mainDone = d7.length ? d7.filter(r => yes(r.main_task_done)).length / d7.length : 0;
+  const exercise = d7.length ? d7.filter(r => yes(r.exercise)).length / d7.length : 0;
+  const avgEnergy = mean(d7.map(r => num(r.energy)));
+
+  const income30 = d30Income.reduce((a,r) => a + num(r.amount), 0);
+  const exp30 = d30Exp.reduce((a,r) => a + num(r.amount), 0);
+  const net30 = income30 - exp30;
+
+  const risk = projectRisk(projects);
+  const taskStreak = streak(daily, 'main_task_done', 'yes');
+
+  const deep30 = mean(lastNDays(daily, 30).map(r => num(r.deep_work_hours)));
+  let trend = 'stable';
+  if (avgDeep > deep30 + 0.25) trend = 'improving';
+  if (avgDeep < deep30 - 0.25) trend = 'declining';
+
+  let score = 0;
+  score += Math.min(avgDeep / 4.0, 1) * 35;
+  score += Math.min(avgLearn / 1.5, 1) * 20;
+  score += mainDone * 25;
+  score += exercise * 10;
+  score += Math.min(avgEnergy / 8.0, 1) * 10;
+
+  document.getElementById('updatedAt').textContent = `Updated ${new Date().toLocaleString()}`;
+  document.getElementById('kpiScore').textContent = score.toFixed(1);
+  const trendEl = document.getElementById('kpiTrend');
+  trendEl.textContent = trend;
+  trendEl.className = `badge ${trend==='improving'?'good':trend==='declining'?'bad':'warn'}`;
+
+  document.getElementById('kpiNet').textContent = `$${net30.toFixed(0)}`;
+  const incBadge = document.getElementById('kpiIncomeStatus');
+  incBadge.textContent = net30 >= 1000 ? 'on target' : 'below target';
+  incBadge.className = `badge ${net30 >= 1000 ? 'good' : 'bad'}`;
+
+  document.getElementById('kpiRisk').textContent = `${risk}/100`;
+  const riskB = document.getElementById('kpiRiskBadge');
+  const riskLabel = risk >= 60 ? 'high risk' : risk >= 35 ? 'medium risk' : 'low risk';
+  riskB.textContent = riskLabel;
+  riskB.className = `badge ${risk >= 60 ? 'bad' : risk >= 35 ? 'warn' : 'good'}`;
+
+  document.getElementById('kpiStreak').textContent = `${taskStreak}d`;
+
+  const actuals = {
+    deep_work_hours: avgDeep,
+    learning_hours: avgLearn,
+    main_task_done_rate: mainDone,
+    exercise_rate: exercise,
+    energy_score: avgEnergy,
+    net_income: net30
+  };
+
+  const pb = document.getElementById('progressBars');
+  const st = document.getElementById('statusTable');
+  targets.forEach(t => {
+    const metric = t.metric;
+    if (!(metric in actuals)) return;
+    const actual = actuals[metric];
+    const target = num(t.target);
+    const status = trackStatus(actual, target);
+    pb.appendChild(makeBar(metric, actual, target, t.unit, status));
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${metric}</td><td><span class="pill ${status==='on_track'?'ok':'off'}">${status}</span></td>`;
+    st.appendChild(tr);
+  });
+
+  const dailySorted = [...daily].sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const labels = dailySorted.map(r => r.date);
+
+  new Chart(document.getElementById('hoursChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Deep Work', data: dailySorted.map(r => num(r.deep_work_hours)), borderColor: '#2dd4bf', backgroundColor: 'rgba(45,212,191,.2)', tension: .3 },
+        { label: 'Learning', data: dailySorted.map(r => num(r.learning_hours)), borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,.2)', tension: .3 }
+      ]
+    },
+    options: { responsive:true, plugins:{legend:{labels:{color:'#dbe7ff'}}}, scales:{x:{ticks:{color:'#9fb0d6'}}, y:{ticks:{color:'#9fb0d6'}}} }
+  });
+
+  const incCum = cumulativeByDate(d30Income);
+  const expCum = cumulativeByDate(d30Exp);
+  const moneyLabels = Array.from(new Set([...incCum.labels, ...expCum.labels])).sort();
+  const mapCum = (labels, vals) => {
+    const map = new Map(labels.map((l,i)=>[l,vals[i]]));
+    let last = 0;
+    return moneyLabels.map(l => { if (map.has(l)) last = map.get(l); return last; });
+  };
+
+  new Chart(document.getElementById('moneyChart'), {
+    type: 'line',
+    data: {
+      labels: moneyLabels,
+      datasets: [
+        { label:'Income', data: mapCum(incCum.labels, incCum.vals), borderColor:'#22c55e', tension:.25 },
+        { label:'Expenses', data: mapCum(expCum.labels, expCum.vals), borderColor:'#f97316', tension:.25 }
+      ]
+    },
+    options: { responsive:true, plugins:{legend:{labels:{color:'#dbe7ff'}}}, scales:{x:{ticks:{color:'#9fb0d6'}}, y:{ticks:{color:'#9fb0d6'}}} }
+  });
+
+  new Chart(document.getElementById('energyChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{ label:'Energy (1-10)', data: dailySorted.map(r => num(r.energy)), backgroundColor:'#a78bfa' }]
+    },
+    options: { responsive:true, plugins:{legend:{labels:{color:'#dbe7ff'}}}, scales:{x:{ticks:{color:'#9fb0d6'}}, y:{ticks:{color:'#9fb0d6'}, min:0, max:10}} }
+  });
+}
+
+main().catch(err => {
+  document.getElementById('updatedAt').textContent = 'Failed to load data. Check server path and CSV files.';
+  console.error(err);
+});
+</script>
+</body>
+</html>
