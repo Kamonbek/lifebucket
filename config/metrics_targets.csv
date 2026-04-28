@@ -1,0 +1,7 @@
+metric,window,target,unit,notes
+deep_work_hours,7d,4.0,hours_per_day,Focus quality work
+learning_hours,7d,1.5,hours_per_day,Skill compounding
+main_task_done_rate,7d,0.85,ratio,Hit the #1 task most days
+exercise_rate,7d,0.70,ratio,At least 5/7 days
+energy_score,7d,8.0,score_1_10,Sustainable intensity
+net_income,30d,1000,USD,Quarter target pacing

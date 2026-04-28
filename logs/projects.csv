@@ -1,0 +1,2 @@
+project,status,priority,deadline,current_milestone,next_action
+Hermes Life OS,active,high,2026-05-15,Dockerized local runtime,Validate compose and run first review
