@@ -223,12 +223,14 @@ function cumulativeByDate(rows) {
 }
 
 async function main() {
-  const [daily, income, expenses, projects, targets] = await Promise.all([
+  const [daily, income, expenses, projects, targets, habits, blocks] = await Promise.all([
     loadCSV('../logs/daily_log.csv'),
     loadCSV('../logs/income.csv'),
     loadCSV('../logs/expenses.csv'),
     loadCSV('../logs/projects.csv'),
-    loadCSV('../config/metrics_targets.csv')
+    loadCSV('../config/metrics_targets.csv'),
+    loadCSV('../logs/habits.csv'),
+    loadCSV('../logs/time_blocks.csv')
   ]);
 
   const d7 = lastNDays(daily, 7);
@@ -247,6 +249,12 @@ async function main() {
 
   const risk = projectRisk(projects);
   const taskStreak = streak(daily, 'main_task_done', 'yes');
+  const h7 = lastNDays(habits, 7);
+  const habitScore = h7.length ? h7.reduce((a,r)=>a+num(r.score_0_1),0)/h7.length : 0;
+  const b7 = lastNDays(blocks, 7);
+  const planned = b7.reduce((a,r)=>a+num(r.planned_minutes),0);
+  const actual = b7.reduce((a,r)=>a+num(r.actual_minutes),0);
+  const executionRate = planned>0 ? (actual/planned) : 0;
 
   const deep30 = mean(lastNDays(daily, 30).map(r => num(r.deep_work_hours)));
   let trend = 'stable';
@@ -278,6 +286,11 @@ async function main() {
   riskB.className = `badge ${risk >= 60 ? 'bad' : risk >= 35 ? 'warn' : 'good'}`;
 
   document.getElementById('kpiStreak').textContent = `${taskStreak}d`;
+  const streakBadge = document.querySelector('.kpi:nth-child(4) .badge');
+  if (streakBadge) {
+    streakBadge.textContent = `Habits ${pct(habitScore)}% • Plan exec ${pct(executionRate)}%`;
+    streakBadge.className = `badge ${executionRate >= 0.8 ? 'good' : 'warn'}`;
+  }
 
   const actuals = {
     deep_work_hours: avgDeep,

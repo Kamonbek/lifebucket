@@ -1,0 +1,3 @@
+date,weekly_goal,metric_name,target,actual,status,notes
+2026-04-28,Income pace,net_income_30d,1000,137.5,off_track,baseline dummy
+2026-04-28,Focus pace,deep_work_hours_7d,4.0,3.0,off_track,baseline dummy
