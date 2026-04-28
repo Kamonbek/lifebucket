@@ -88,3 +88,10 @@ select
   (select coalesce(sum(amount),0) from expense_logs where currency = 'USD' and date >= current_date - interval '30 days') as expenses_30d_usd,
   (select count(*) from projects where status = 'active') as active_projects,
   now() as generated_at;
+
+-- Static dashboard reads with the publishable/anon key. The data model currently
+-- contains non-sensitive dummy or user-approved life metrics. Tighten these grants
+-- later if you add private journals, banking details, or authentication.
+grant usage on schema public to anon, authenticated;
+grant select on daily_logs, income_logs, expense_logs, projects, habits, time_blocks, outcomes, life_os_latest_summary to anon, authenticated;
+grant insert, update, delete on daily_logs, income_logs, expense_logs, projects, habits, time_blocks, outcomes to authenticated;
