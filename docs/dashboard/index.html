@@ -76,7 +76,7 @@
         <h1>Life OS Dashboard</h1>
         <div class="sub" id="updatedAt">Loading real data...</div>
       </div>
-      <div class="sub">Data source: /workspace/life-os/logs/*.csv</div>
+      <div class="sub" id="dataSourceBadge">Data source: loading...</div>
     </div>
 
     <div class="grid">
@@ -99,6 +99,11 @@
         <div class="kpi-title">Streak (main task)</div>
         <div class="kpi-value" id="kpiStreak">--</div>
         <div class="badge good">Consistency</div>
+      </div>
+      <div class="card kpi">
+        <div class="kpi-title">Voice entries (7d)</div>
+        <div class="kpi-value" id="kpiVoice">--</div>
+        <div class="badge" id="kpiVoiceBadge">--</div>
       </div>
 
       <div class="card wide">
@@ -128,6 +133,14 @@
       <div class="card full">
         <h3 class="section-title">Daily Energy</h3>
         <canvas id="energyChart" height="100"></canvas>
+      </div>
+
+      <div class="card full">
+        <h3 class="section-title">Alerts & Risks</h3>
+        <table>
+          <thead><tr><th>Alert</th><th>Severity</th></tr></thead>
+          <tbody id="alertsTable"></tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -159,12 +172,18 @@ const SUPABASE_URL = 'https://ypqqpoxgilugoppzvfrt.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_AfO624Te3XiPdORdVGBZIw_tWUSFGhJ';
 const sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+const sourceStats = { supabase: 0, csv: 0 };
+
 async function loadSupabaseOrCSV(table, csvPath) {
   if (sb) {
     const { data, error } = await sb.from(table).select('*');
-    if (!error && Array.isArray(data)) return data.map(normalizeRow);
+    if (!error && Array.isArray(data)) {
+      sourceStats.supabase += 1;
+      return data.map(normalizeRow);
+    }
     console.warn(`Supabase load failed for ${table}; falling back to CSV`, error);
   }
+  sourceStats.csv += 1;
   return loadCSV(csvPath);
 }
 
@@ -243,19 +262,21 @@ function cumulativeByDate(rows) {
 }
 
 async function main() {
-  const [daily, income, expenses, projects, targets, habits, blocks] = await Promise.all([
+  const [daily, income, expenses, projects, targets, habits, blocks, voices] = await Promise.all([
     loadSupabaseOrCSV('daily_logs', '../logs/daily_log.csv'),
     loadSupabaseOrCSV('income_logs', '../logs/income.csv'),
     loadSupabaseOrCSV('expense_logs', '../logs/expenses.csv'),
     loadSupabaseOrCSV('projects', '../logs/projects.csv'),
     loadCSV('../config/metrics_targets.csv'),
     loadSupabaseOrCSV('habits', '../logs/habits.csv'),
-    loadSupabaseOrCSV('time_blocks', '../logs/time_blocks.csv')
+    loadSupabaseOrCSV('time_blocks', '../logs/time_blocks.csv'),
+    loadSupabaseOrCSV('voice_journal', '../logs/voice_journal.csv')
   ]);
 
   const d7 = lastNDays(daily, 7);
   const d30Income = lastNDays(income, 30);
   const d30Exp = lastNDays(expenses, 30);
+  const voice7 = lastNDays(voices, 7, 'created_at_utc').length;
 
   const avgDeep = mean(d7.map(r => num(r.deep_work_hours)));
   const avgLearn = mean(d7.map(r => num(r.learning_hours)));
@@ -289,6 +310,8 @@ async function main() {
   score += Math.min(avgEnergy / 8.0, 1) * 10;
 
   document.getElementById('updatedAt').textContent = `Updated ${new Date().toLocaleString()}`;
+  const srcMode = sourceStats.csv === 0 ? 'Supabase only' : (sourceStats.supabase > 0 ? 'Supabase + CSV fallback' : 'CSV fallback only');
+  document.getElementById('dataSourceBadge').textContent = `Data source mode: ${srcMode}`;
   document.getElementById('kpiScore').textContent = score.toFixed(1);
   const trendEl = document.getElementById('kpiTrend');
   trendEl.textContent = trend;
@@ -306,6 +329,10 @@ async function main() {
   riskB.className = `badge ${risk >= 60 ? 'bad' : risk >= 35 ? 'warn' : 'good'}`;
 
   document.getElementById('kpiStreak').textContent = `${taskStreak}d`;
+  document.getElementById('kpiVoice').textContent = `${voice7}`;
+  const voiceBadge = document.getElementById('kpiVoiceBadge');
+  voiceBadge.textContent = voice7 > 0 ? 'journal active' : 'no entries this week';
+  voiceBadge.className = `badge ${voice7 > 0 ? 'good' : 'warn'}`;
   const streakBadge = document.querySelector('.kpi:nth-child(4) .badge');
   if (streakBadge) {
     streakBadge.textContent = `Habits ${pct(habitScore)}% • Plan exec ${pct(executionRate)}%`;
@@ -380,6 +407,26 @@ async function main() {
     },
     options: { responsive:true, plugins:{legend:{labels:{color:'#dbe7ff'}}}, scales:{x:{ticks:{color:'#9fb0d6'}}, y:{ticks:{color:'#9fb0d6'}, min:0, max:10}} }
   });
+
+  const alerts = [];
+  if (avgDeep < 2.5) alerts.push(['Deep work below 2.5h/day (7d avg)', 'high']);
+  if (mainDone < 0.7) alerts.push(['Main task completion below 70% (7d)', 'high']);
+  if (exp30 > income30) alerts.push(['30d expenses exceed 30d income', 'high']);
+  if (projects.filter(p => (p.status||'').toLowerCase() === 'active').length > 3) alerts.push(['Too many active projects (>3)', 'medium']);
+  if (voice7 === 0) alerts.push(['No voice-journal entries in last 7 days', 'low']);
+
+  const at = document.getElementById('alertsTable');
+  if (!alerts.length) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td>No major alerts</td><td><span class="pill ok">ok</span></td>';
+    at.appendChild(tr);
+  } else {
+    for (const [msg, sev] of alerts) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${msg}</td><td><span class="pill ${sev==='high'?'off':'ok'}">${sev}</span></td>`;
+      at.appendChild(tr);
+    }
+  }
 }
 
 main().catch(err => {

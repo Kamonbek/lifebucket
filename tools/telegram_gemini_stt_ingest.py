@@ -7,6 +7,7 @@ import os
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
@@ -137,8 +138,33 @@ def main():
     offset = load_offset()
     print(f'[start] polling telegram with model={GEMINI_MODEL} offset={offset}')
 
+    backoff = POLL_SECONDS
     while True:
-        resp = telegram_api('getUpdates', {'timeout': 30, 'offset': offset, 'allowed_updates': json.dumps(['message'])})
+        try:
+            resp = telegram_api('getUpdates', {'timeout': 30, 'offset': offset, 'allowed_updates': json.dumps(['message'])})
+            backoff = POLL_SECONDS
+        except HTTPError as e:
+            if e.code == 409:
+                # Another poller is currently consuming this bot token.
+                backoff = min(max(backoff * 2, POLL_SECONDS), 60)
+                print(f'[warn] Telegram polling conflict (HTTP 409). Another consumer may be running. Retrying in {backoff}s.')
+                time.sleep(backoff)
+                continue
+            backoff = min(max(backoff * 2, POLL_SECONDS), 60)
+            print(f'[warn] HTTP error from Telegram: {e}. Retrying in {backoff}s.')
+            time.sleep(backoff)
+            continue
+        except URLError as e:
+            backoff = min(max(backoff * 2, POLL_SECONDS), 60)
+            print(f'[warn] Network error from Telegram: {e}. Retrying in {backoff}s.')
+            time.sleep(backoff)
+            continue
+        except Exception as e:
+            backoff = min(max(backoff * 2, POLL_SECONDS), 60)
+            print(f'[warn] Unexpected polling error: {e}. Retrying in {backoff}s.')
+            time.sleep(backoff)
+            continue
+
         if not resp.get('ok'):
             print('[warn] getUpdates failed', resp)
             time.sleep(POLL_SECONDS)
