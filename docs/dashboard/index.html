@@ -106,6 +106,12 @@
         <div class="badge" id="kpiVoiceBadge">--</div>
       </div>
 
+      <div class="card kpi">
+        <div class="kpi-title">Sleep duration (last)</div>
+        <div class="kpi-value" id="kpiSleepDuration">--</div>
+        <div class="badge" id="kpiSleepBadge">--</div>
+      </div>
+
       <div class="card wide">
         <h3 class="section-title">Goal Progress Bars</h3>
         <div id="progressBars"></div>
@@ -133,6 +139,19 @@
       <div class="card full">
         <h3 class="section-title">Daily Energy</h3>
         <canvas id="energyChart" height="100"></canvas>
+      </div>
+
+      <div class="card mid">
+        <h3 class="section-title">Platform Message Mix (today)</h3>
+        <canvas id="platformMixChart" height="180"></canvas>
+      </div>
+
+      <div class="card mid">
+        <h3 class="section-title">What I learned about you today</h3>
+        <table>
+          <thead><tr><th>Insight</th><th>Signal</th></tr></thead>
+          <tbody id="insightsTable"></tbody>
+        </table>
       </div>
 
       <div class="card full">
@@ -195,6 +214,31 @@ function normalizeRow(row) {
 
 function mean(arr){ return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0; }
 function pct(x){ return Math.round(x*100); }
+
+function parseDateTimeLocal(dateStr, timeStr) {
+  if (!dateStr || !timeStr) return null;
+  const d = new Date(`${dateStr}T${timeStr}`);
+  return isNaN(d) ? null : d;
+}
+
+function sleepHoursFromRow(r) {
+  const start = parseDateTimeLocal(r.date_local, r.sleep_time_local);
+  const end = parseDateTimeLocal(r.date_local, r.wake_time_local);
+  if (!start || !end) return null;
+  let diff = (end - start) / 3600000;
+  if (diff < 0) diff += 24;
+  return diff;
+}
+
+function weekOverWeekByKey(rows, key) {
+  const sorted = [...rows].sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const curr = sorted.slice(-7).map(r => num(r[key]));
+  const prev = sorted.slice(-14, -7).map(r => num(r[key]));
+  const currAvg = mean(curr);
+  const prevAvg = mean(prev);
+  const delta = currAvg - prevAvg;
+  return { currAvg, prevAvg, delta };
+}
 
 function lastNDays(rows, n, dateKey='date') {
   const cutoff = new Date();
@@ -262,7 +306,7 @@ function cumulativeByDate(rows) {
 }
 
 async function main() {
-  const [daily, income, expenses, projects, targets, habits, blocks, voices] = await Promise.all([
+  const [daily, income, expenses, projects, targets, habits, blocks, voices, sleepLog, platformDaily] = await Promise.all([
     loadSupabaseOrCSV('daily_logs', '../logs/daily_log.csv'),
     loadSupabaseOrCSV('income_logs', '../logs/income.csv'),
     loadSupabaseOrCSV('expense_logs', '../logs/expenses.csv'),
@@ -270,7 +314,9 @@ async function main() {
     loadCSV('../config/metrics_targets.csv'),
     loadSupabaseOrCSV('habits', '../logs/habits.csv'),
     loadSupabaseOrCSV('time_blocks', '../logs/time_blocks.csv'),
-    loadSupabaseOrCSV('voice_journal', '../logs/voice_journal.csv')
+    loadSupabaseOrCSV('voice_journal', '../logs/voice_journal.csv'),
+    loadSupabaseOrCSV('sleep_log', '../logs/sleep_log.csv'),
+    loadSupabaseOrCSV('platform_message_daily', '../logs/platform_message_daily.csv')
   ]);
 
   const d7 = lastNDays(daily, 7);
@@ -333,10 +379,27 @@ async function main() {
   const voiceBadge = document.getElementById('kpiVoiceBadge');
   voiceBadge.textContent = voice7 > 0 ? 'journal active' : 'no entries this week';
   voiceBadge.className = `badge ${voice7 > 0 ? 'good' : 'warn'}`;
+
   const streakBadge = document.querySelector('.kpi:nth-child(4) .badge');
   if (streakBadge) {
     streakBadge.textContent = `Habits ${pct(habitScore)}% • Plan exec ${pct(executionRate)}%`;
     streakBadge.className = `badge ${executionRate >= 0.8 ? 'good' : 'warn'}`;
+  }
+
+  const sleepSorted = [...sleepLog].sort((a,b)=>new Date(b.date_local)-new Date(a.date_local));
+  const latestSleep = sleepSorted[0];
+  const latestSleepHours = latestSleep ? sleepHoursFromRow(latestSleep) : null;
+  const sleepValEl = document.getElementById('kpiSleepDuration');
+  const sleepBadgeEl = document.getElementById('kpiSleepBadge');
+  if (latestSleepHours == null) {
+    sleepValEl.textContent = '--';
+    sleepBadgeEl.textContent = 'no sleep data';
+    sleepBadgeEl.className = 'badge warn';
+  } else {
+    sleepValEl.textContent = `${latestSleepHours.toFixed(1)}h`;
+    const sleepState = latestSleepHours >= 7 && latestSleepHours <= 9 ? 'recovered' : (latestSleepHours < 7 ? 'sleep debt risk' : 'oversleep risk');
+    sleepBadgeEl.textContent = `${sleepState} • ${latestSleep?.wake_time_local || ''}`;
+    sleepBadgeEl.className = `badge ${sleepState==='recovered' ? 'good' : 'warn'}`;
   }
 
   const actuals = {
@@ -407,6 +470,42 @@ async function main() {
     },
     options: { responsive:true, plugins:{legend:{labels:{color:'#dbe7ff'}}}, scales:{x:{ticks:{color:'#9fb0d6'}}, y:{ticks:{color:'#9fb0d6'}, min:0, max:10}} }
   });
+
+  const platformToday = [...platformDaily].filter(r => r.date_local).sort((a,b)=>new Date(b.date_local)-new Date(a.date_local))[0]?.date_local;
+  const platformRows = platformToday ? platformDaily.filter(r => r.date_local === platformToday) : [];
+  new Chart(document.getElementById('platformMixChart'), {
+    type: 'doughnut',
+    data: {
+      labels: platformRows.map(r => r.platform || 'unknown'),
+      datasets: [{
+        data: platformRows.map(r => num(r.total_messages)),
+        backgroundColor: ['#22c55e','#60a5fa','#f97316','#a78bfa','#2dd4bf']
+      }]
+    },
+    options: { plugins:{legend:{labels:{color:'#dbe7ff'}}} }
+  });
+
+  const insights = [];
+  const wowDeep = weekOverWeekByKey(dailySorted, 'deep_work_hours');
+  const wowLearn = weekOverWeekByKey(dailySorted, 'learning_hours');
+  const deepDelta = wowDeep.delta || 0;
+  const learnDelta = wowLearn.delta || 0;
+  insights.push([`Deep work WoW change: ${deepDelta >= 0 ? '+' : ''}${deepDelta.toFixed(2)}h/day`, deepDelta >= 0 ? 'up' : 'down']);
+  insights.push([`Learning WoW change: ${learnDelta >= 0 ? '+' : ''}${learnDelta.toFixed(2)}h/day`, learnDelta >= 0 ? 'up' : 'down']);
+  if (latestSleepHours != null) insights.push([`Last sleep duration ${latestSleepHours.toFixed(1)}h (target 7-9h)`, latestSleepHours >= 7 && latestSleepHours <= 9 ? 'in range' : 'out of range']);
+  if (platformRows.length) {
+    const totalP = platformRows.reduce((a,r)=>a+num(r.total_messages),0) || 1;
+    const telegram = platformRows.find(r => (r.platform||'').toLowerCase()==='telegram');
+    const tgShare = telegram ? (num(telegram.total_messages)/totalP)*100 : 0;
+    insights.push([`Telegram share today: ${tgShare.toFixed(1)}% of all tracked messages`, tgShare >= 40 ? 'high focus on chat' : 'balanced']);
+  }
+
+  const it = document.getElementById('insightsTable');
+  for (const [msg, sig] of insights) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${msg}</td><td><span class="pill ${sig.includes('down')||sig.includes('out')?'off':'ok'}">${sig}</span></td>`;
+    it.appendChild(tr);
+  }
 
   const alerts = [];
   if (avgDeep < 2.5) alerts.push(['Deep work below 2.5h/day (7d avg)', 'high']);
