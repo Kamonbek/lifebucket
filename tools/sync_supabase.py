@@ -33,6 +33,17 @@ def none_if_blank(v):
     return None if v == '' else v
 
 
+def normalize_created_at_utc(row):
+    v = none_if_blank(row.get('created_at_utc', ''))
+    if v:
+        return v
+    local_dt = none_if_blank(row.get('event_local_datetime', ''))
+    if local_dt:
+        offset = none_if_blank(row.get('utc_offset', '')) or '+05:00'
+        return local_dt.replace(' ', 'T') + offset
+    return None
+
+
 def normalize_pg_url(url):
     """Return a psycopg-safe URL even when the password contains raw @/: chars."""
     if not (url.startswith('postgresql://') or url.startswith('postgres://')):
@@ -53,7 +64,9 @@ def main():
         raise SystemExit('SUPABASE_CON_URL is not set')
     con_url = normalize_pg_url(con_url)
 
-    with psycopg.connect(con_url) as conn:
+    # Supabase transaction pooler (PgBouncer) is incompatible with auto-prepared statements.
+    # Disable client-side statement preparation to avoid DuplicatePreparedStatement errors.
+    with psycopg.connect(con_url, prepare_threshold=None) as conn:
         with conn.cursor() as cur:
             cur.execute(SCHEMA.read_text(encoding='utf-8'))
 
@@ -185,7 +198,7 @@ def main():
                     ''',
                     (
                         int(msg_id),
-                        r.get('created_at_utc'),
+                        normalize_created_at_utc(r),
                         int(r.get('chat_id')) if r.get('chat_id') else None,
                         int(r.get('user_id')) if r.get('user_id') else None,
                         none_if_blank(r.get('username','')),
@@ -194,6 +207,186 @@ def main():
                         n(r.get('duration_sec','')),
                         none_if_blank(r.get('gemini_model','')),
                         none_if_blank(r.get('transcript','')),
+                    )
+                )
+
+            for r in read_csv(LOGS / 'sleep_log.csv'):
+                d = r.get('date_local')
+                if not d:
+                    continue
+                cur.execute(
+                    '''
+                    insert into sleep_log(date_local,sleep_time_local,wake_time_local,sleep_source,wake_source,timezone,utc_offset,confidence,notes)
+                    values (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    on conflict(date_local) do update set
+                      sleep_time_local=excluded.sleep_time_local,
+                      wake_time_local=excluded.wake_time_local,
+                      sleep_source=excluded.sleep_source,
+                      wake_source=excluded.wake_source,
+                      timezone=excluded.timezone,
+                      utc_offset=excluded.utc_offset,
+                      confidence=excluded.confidence,
+                      notes=excluded.notes,
+                      updated_at=now()
+                    ''',
+                    (
+                        d,
+                        none_if_blank(r.get('sleep_time_local','')),
+                        none_if_blank(r.get('wake_time_local','')),
+                        none_if_blank(r.get('sleep_source','')),
+                        none_if_blank(r.get('wake_source','')),
+                        none_if_blank(r.get('timezone','')),
+                        none_if_blank(r.get('utc_offset','')),
+                        none_if_blank(r.get('confidence','')),
+                        none_if_blank(r.get('notes','')),
+                    )
+                )
+
+            for r in read_csv(LOGS / 'chat_events.csv'):
+                chat_id = r.get('chat_id')
+                msg_id = r.get('message_id')
+                if not chat_id or not msg_id:
+                    continue
+                cur.execute(
+                    '''
+                    insert into chat_events(chat_id,message_id,created_at_utc,event_local_date,event_local_datetime,timezone,utc_offset,user_id,username,message_type,has_text,has_voice,has_audio,text_len,duration_sec)
+                    values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    on conflict(chat_id, message_id) do update set
+                      created_at_utc=excluded.created_at_utc,
+                      event_local_date=excluded.event_local_date,
+                      event_local_datetime=excluded.event_local_datetime,
+                      timezone=excluded.timezone,
+                      utc_offset=excluded.utc_offset,
+                      user_id=excluded.user_id,
+                      username=excluded.username,
+                      message_type=excluded.message_type,
+                      has_text=excluded.has_text,
+                      has_voice=excluded.has_voice,
+                      has_audio=excluded.has_audio,
+                      text_len=excluded.text_len,
+                      duration_sec=excluded.duration_sec,
+                      updated_at=now()
+                    ''',
+                    (
+                        int(chat_id),
+                        int(msg_id),
+                        normalize_created_at_utc(r),
+                        none_if_blank(r.get('event_local_date','')),
+                        none_if_blank(r.get('event_local_datetime','')),
+                        none_if_blank(r.get('timezone','')),
+                        none_if_blank(r.get('utc_offset','')),
+                        int(r.get('user_id')) if r.get('user_id') else None,
+                        none_if_blank(r.get('username','')),
+                        none_if_blank(r.get('message_type','')),
+                        b(r.get('has_text','')),
+                        b(r.get('has_voice','')),
+                        b(r.get('has_audio','')),
+                        int(float(r.get('text_len') or 0)) if str(r.get('text_len','')).strip() != '' else None,
+                        n(r.get('duration_sec','')),
+                    )
+                )
+
+            for r in read_csv(LOGS / 'numeric_facts.csv'):
+                chat_id = r.get('chat_id')
+                msg_id = r.get('message_id')
+                if not chat_id or not msg_id:
+                    continue
+                cur.execute(
+                    '''
+                    insert into numeric_facts(chat_id,message_id,source_type,fact_key,fact_value,fact_unit,confidence,evidence,created_at_utc,event_local_date,event_local_datetime,timezone,user_id,username)
+                    values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    on conflict(chat_id, message_id, source_type, fact_key, fact_value, evidence) do update set
+                      fact_unit=excluded.fact_unit,
+                      confidence=excluded.confidence,
+                      created_at_utc=excluded.created_at_utc,
+                      event_local_date=excluded.event_local_date,
+                      event_local_datetime=excluded.event_local_datetime,
+                      timezone=excluded.timezone,
+                      user_id=excluded.user_id,
+                      username=excluded.username,
+                      updated_at=now()
+                    ''',
+                    (
+                        int(chat_id),
+                        int(msg_id),
+                        r.get('source_type') or 'unknown',
+                        r.get('fact_key') or 'unknown',
+                        none_if_blank(r.get('fact_value','')),
+                        none_if_blank(r.get('fact_unit','')),
+                        none_if_blank(r.get('confidence','')),
+                        none_if_blank(r.get('evidence','')),
+                        normalize_created_at_utc(r),
+                        none_if_blank(r.get('event_local_date','')),
+                        none_if_blank(r.get('event_local_datetime','')),
+                        none_if_blank(r.get('timezone','')),
+                        int(r.get('user_id')) if r.get('user_id') else None,
+                        none_if_blank(r.get('username','')),
+                    )
+                )
+
+            for r in read_csv(LOGS / 'chat_activity_daily.csv'):
+                d = r.get('date_local')
+                if not d:
+                    continue
+                cur.execute(
+                    '''
+                    insert into chat_activity_daily(date_local,timezone,utc_offset,total_messages,voice_messages,text_messages,other_messages,count_confidence,notes)
+                    values (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    on conflict(date_local) do update set
+                      timezone=excluded.timezone,
+                      utc_offset=excluded.utc_offset,
+                      total_messages=excluded.total_messages,
+                      voice_messages=excluded.voice_messages,
+                      text_messages=excluded.text_messages,
+                      other_messages=excluded.other_messages,
+                      count_confidence=excluded.count_confidence,
+                      notes=excluded.notes,
+                      updated_at=now()
+                    ''',
+                    (
+                        d,
+                        none_if_blank(r.get('timezone','')),
+                        none_if_blank(r.get('utc_offset','')),
+                        int(float(r.get('total_messages') or 0)),
+                        int(float(r.get('voice_messages') or 0)),
+                        int(float(r.get('text_messages') or 0)),
+                        int(float(r.get('other_messages') or 0)),
+                        none_if_blank(r.get('count_confidence','')),
+                        none_if_blank(r.get('notes','')),
+                    )
+                )
+
+            for r in read_csv(LOGS / 'platform_message_daily.csv'):
+                d = r.get('date_local')
+                platform = r.get('platform')
+                if not d or not platform:
+                    continue
+                cur.execute(
+                    '''
+                    insert into platform_message_daily(date_local,platform,timezone,utc_offset,total_messages,voice_messages,text_messages,other_messages,count_confidence,notes)
+                    values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    on conflict(date_local, platform) do update set
+                      timezone=excluded.timezone,
+                      utc_offset=excluded.utc_offset,
+                      total_messages=excluded.total_messages,
+                      voice_messages=excluded.voice_messages,
+                      text_messages=excluded.text_messages,
+                      other_messages=excluded.other_messages,
+                      count_confidence=excluded.count_confidence,
+                      notes=excluded.notes,
+                      updated_at=now()
+                    ''',
+                    (
+                        d,
+                        platform,
+                        none_if_blank(r.get('timezone','')),
+                        none_if_blank(r.get('utc_offset','')),
+                        int(float(r.get('total_messages') or 0)),
+                        int(float(r.get('voice_messages') or 0)),
+                        int(float(r.get('text_messages') or 0)),
+                        int(float(r.get('other_messages') or 0)),
+                        none_if_blank(r.get('count_confidence','')),
+                        none_if_blank(r.get('notes','')),
                     )
                 )
 

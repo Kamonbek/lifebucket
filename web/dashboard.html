@@ -248,6 +248,12 @@ function confidenceLabel(primaryRows, fallbackRows=0) {
   return 'unknown';
 }
 
+function daysStale(dateStr) {
+  const d = new Date(dateStr);
+  if (isNaN(d)) return null;
+  return Math.floor((new Date() - d) / 86400000);
+}
+
 function lastNDays(rows, n, dateKey='date') {
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - (n-1));
@@ -364,7 +370,14 @@ async function main() {
   score += exercise * 10;
   score += Math.min(avgEnergy / 8.0, 1) * 10;
 
-  document.getElementById('updatedAt').textContent = `Updated ${new Date().toLocaleString()}`;
+  const latestDailyDate = [...daily]
+    .map(r => r.date)
+    .filter(Boolean)
+    .sort()
+    .at(-1);
+  const staleDays = latestDailyDate ? daysStale(latestDailyDate) : null;
+  const freshness = staleDays == null ? 'freshness unknown' : (staleDays <= 1 ? `fresh (D-${staleDays})` : `stale (${staleDays}d old)`);
+  document.getElementById('updatedAt').textContent = `Updated ${new Date().toLocaleString()} • latest daily_log=${latestDailyDate || 'n/a'} • ${freshness}`;
   const srcMode = sourceStats.csv === 0 ? 'Supabase only' : (sourceStats.supabase > 0 ? 'Supabase + CSV fallback' : 'CSV fallback only');
   document.getElementById('dataSourceBadge').textContent = `Data source mode: ${srcMode}`;
   document.getElementById('kpiScore').textContent = score.toFixed(1);
@@ -527,6 +540,7 @@ async function main() {
   if (exp30 > income30) alerts.push(['30d expenses exceed 30d income', 'high']);
   if (projects.filter(p => (p.status||'').toLowerCase() === 'active').length > 3) alerts.push(['Too many active projects (>3)', 'medium']);
   if (voice7 === 0) alerts.push(['No voice-journal entries in last 7 days', 'low']);
+  if (staleDays != null && staleDays > 2) alerts.push([`Daily log appears stale (${staleDays} days old)`, 'high']);
 
   const at = document.getElementById('alertsTable');
   if (!alerts.length) {
