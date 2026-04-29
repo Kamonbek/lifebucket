@@ -4,3 +4,4 @@ node_modules/
 .DS_Store
 .state/
 __pycache__/
+logs/voice_journal.csv
