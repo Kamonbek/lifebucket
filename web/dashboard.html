@@ -152,6 +152,7 @@
           <thead><tr><th>Insight</th><th>Signal</th></tr></thead>
           <tbody id="insightsTable"></tbody>
         </table>
+        <div class="note" id="insightConfidence">Confidence: --</div>
       </div>
 
       <div class="card full">
@@ -240,6 +241,13 @@ function weekOverWeekByKey(rows, key) {
   return { currAvg, prevAvg, delta };
 }
 
+function confidenceLabel(primaryRows, fallbackRows=0) {
+  if (primaryRows >= 14 && fallbackRows === 0) return 'high';
+  if (primaryRows >= 7) return 'medium';
+  if (primaryRows > 0) return 'low';
+  return 'unknown';
+}
+
 function lastNDays(rows, n, dateKey='date') {
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - (n-1));
@@ -322,7 +330,8 @@ async function main() {
   const d7 = lastNDays(daily, 7);
   const d30Income = lastNDays(income, 30);
   const d30Exp = lastNDays(expenses, 30);
-  const voice7 = lastNDays(voices, 7, 'created_at_utc').length;
+  const voiceRows7 = lastNDays(voices, 7, 'created_at_utc');
+  const voice7 = voiceRows7.length;
 
   const avgDeep = mean(d7.map(r => num(r.deep_work_hours)));
   const avgLearn = mean(d7.map(r => num(r.learning_hours)));
@@ -377,7 +386,10 @@ async function main() {
   document.getElementById('kpiStreak').textContent = `${taskStreak}d`;
   document.getElementById('kpiVoice').textContent = `${voice7}`;
   const voiceBadge = document.getElementById('kpiVoiceBadge');
-  voiceBadge.textContent = voice7 > 0 ? 'journal active' : 'no entries this week';
+  const avgVoiceLen = voiceRows7.length
+    ? mean(voiceRows7.map(v => (v.transcript || '').trim().length).filter(x => Number.isFinite(x)))
+    : 0;
+  voiceBadge.textContent = voice7 > 0 ? `journal active • avg ${Math.round(avgVoiceLen)} chars` : 'no entries this week';
   voiceBadge.className = `badge ${voice7 > 0 ? 'good' : 'warn'}`;
 
   const streakBadge = document.querySelector('.kpi:nth-child(4) .badge');
@@ -506,6 +518,8 @@ async function main() {
     tr.innerHTML = `<td>${msg}</td><td><span class="pill ${sig.includes('down')||sig.includes('out')?'off':'ok'}">${sig}</span></td>`;
     it.appendChild(tr);
   }
+  const insightConfidence = confidenceLabel(dailySorted.length, sourceStats.csv);
+  document.getElementById('insightConfidence').textContent = `Confidence: ${insightConfidence} (daily_rows=${dailySorted.length}, csv_fallback_tables=${sourceStats.csv})`;
 
   const alerts = [];
   if (avgDeep < 2.5) alerts.push(['Deep work below 2.5h/day (7d avg)', 'high']);
