@@ -81,17 +81,34 @@ create table if not exists outcomes (
   primary key(date, weekly_goal, metric_name)
 );
 
-create or replace view life_os_latest_summary as
+create table if not exists voice_journal (
+  message_id bigint primary key,
+  created_at_utc timestamptz not null,
+  journal_date date generated always as ((created_at_utc at time zone 'UTC')::date) stored,
+  chat_id bigint,
+  user_id bigint,
+  username text,
+  file_id text,
+  mime_type text,
+  duration_sec numeric,
+  gemini_model text,
+  transcript text,
+  updated_at timestamptz not null default now()
+);
+
+drop view if exists life_os_latest_summary;
+create view life_os_latest_summary as
 select
   (select count(*) from daily_logs) as daily_log_days,
   (select coalesce(sum(amount),0) from income_logs where currency = 'USD' and date >= current_date - interval '30 days') as income_30d_usd,
   (select coalesce(sum(amount),0) from expense_logs where currency = 'USD' and date >= current_date - interval '30 days') as expenses_30d_usd,
   (select count(*) from projects where status = 'active') as active_projects,
+  (select count(*) from voice_journal where created_at_utc >= now() - interval '7 days') as voice_entries_7d,
   now() as generated_at;
 
 -- Static dashboard reads with the publishable/anon key. The data model currently
 -- contains non-sensitive dummy or user-approved life metrics. Tighten these grants
 -- later if you add private journals, banking details, or authentication.
 grant usage on schema public to anon, authenticated;
-grant select on daily_logs, income_logs, expense_logs, projects, habits, time_blocks, outcomes, life_os_latest_summary to anon, authenticated;
-grant insert, update, delete on daily_logs, income_logs, expense_logs, projects, habits, time_blocks, outcomes to authenticated;
+grant select on daily_logs, income_logs, expense_logs, projects, habits, time_blocks, outcomes, voice_journal, life_os_latest_summary to anon, authenticated;
+grant insert, update, delete on daily_logs, income_logs, expense_logs, projects, habits, time_blocks, outcomes, voice_journal to authenticated;

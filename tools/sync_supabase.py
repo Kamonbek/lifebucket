@@ -163,6 +163,40 @@ def main():
                      none_if_blank(r.get('status','')), none_if_blank(r.get('notes','')))
                 )
 
+            for r in read_csv(LOGS / 'voice_journal.csv'):
+                msg_id = r.get('message_id')
+                if not msg_id:
+                    continue
+                cur.execute(
+                    '''
+                    insert into voice_journal(message_id, created_at_utc, chat_id, user_id, username, file_id, mime_type, duration_sec, gemini_model, transcript)
+                    values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    on conflict(message_id) do update set
+                      created_at_utc=excluded.created_at_utc,
+                      chat_id=excluded.chat_id,
+                      user_id=excluded.user_id,
+                      username=excluded.username,
+                      file_id=excluded.file_id,
+                      mime_type=excluded.mime_type,
+                      duration_sec=excluded.duration_sec,
+                      gemini_model=excluded.gemini_model,
+                      transcript=excluded.transcript,
+                      updated_at=now()
+                    ''',
+                    (
+                        int(msg_id),
+                        r.get('created_at_utc'),
+                        int(r.get('chat_id')) if r.get('chat_id') else None,
+                        int(r.get('user_id')) if r.get('user_id') else None,
+                        none_if_blank(r.get('username','')),
+                        none_if_blank(r.get('file_id','')),
+                        none_if_blank(r.get('mime_type','')),
+                        n(r.get('duration_sec','')),
+                        none_if_blank(r.get('gemini_model','')),
+                        none_if_blank(r.get('transcript','')),
+                    )
+                )
+
             cur.execute('select * from life_os_latest_summary')
             row = cur.fetchone()
             cols = [d.name for d in cur.description]
