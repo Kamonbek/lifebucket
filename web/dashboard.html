@@ -118,6 +118,12 @@
         <div class="badge" id="kpiDataQualityBadge">--</div>
       </div>
 
+      <div class="card kpi">
+        <div class="kpi-title">Alert Pressure</div>
+        <div class="kpi-value" id="kpiAlertPressure">--</div>
+        <div class="badge" id="kpiAlertBadge">--</div>
+      </div>
+
       <div class="card wide">
         <h3 class="section-title">Goal Progress Bars</h3>
         <div id="progressBars"></div>
@@ -634,6 +640,14 @@ async function main() {
   if (projects.filter(p => (p.status||'').toLowerCase() === 'active').length > 3) alerts.push(['Too many active projects (>3)', 'medium']);
   if (voice7 === 0) alerts.push(['No voice-journal entries in last 7 days', 'low']);
   if (staleDays != null && staleDays > 2) alerts.push([`Daily log appears stale (${staleDays} days old)`, 'high']);
+
+  const highAlerts = alerts.filter(([, sev]) => sev === 'high').length;
+  const medAlerts = alerts.filter(([, sev]) => sev === 'medium').length;
+  const pressureScore = Math.max(0, 100 - (highAlerts * 35 + medAlerts * 15));
+  document.getElementById('kpiAlertPressure').textContent = `${pressureScore}`;
+  const alertBadge = document.getElementById('kpiAlertBadge');
+  alertBadge.textContent = `${highAlerts} high • ${medAlerts} medium`;
+  alertBadge.className = `badge ${highAlerts > 0 ? 'bad' : medAlerts > 0 ? 'warn' : 'good'}`;
 
   const at = document.getElementById('alertsTable');
   if (!alerts.length) {

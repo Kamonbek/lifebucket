@@ -8,4 +8,5 @@ node_modules/
 __pycache__/
 *.pyc
 *.pyo
+*.bak_*
 logs/voice_journal.csv
