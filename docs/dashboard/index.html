@@ -86,7 +86,7 @@
         <div class="badge" id="kpiTrend">--</div>
       </div>
       <div class="card kpi">
-        <div class="kpi-title">30d Net Income</div>
+        <div class="kpi-title">30d Net Cashflow (UZS)</div>
         <div class="kpi-value" id="kpiNet">--</div>
         <div class="badge" id="kpiIncomeStatus">--</div>
       </div>
@@ -150,6 +150,12 @@
       <div class="card mid">
         <h3 class="section-title">Platform Message Mix (today)</h3>
         <canvas id="platformMixChart" height="180"></canvas>
+      </div>
+
+      <div class="card mid">
+        <h3 class="section-title">Needs vs Wants (today)</h3>
+        <canvas id="needsWantsChart" height="180"></canvas>
+        <div class="note" id="needsWantsSummary">Needs: -- • Wants: --</div>
       </div>
 
       <div class="card mid">
@@ -232,13 +238,18 @@ const SUPABASE_KEY = 'sb_publishable_AfO624Te3XiPdORdVGBZIw_tWUSFGhJ';
 const sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const sourceStats = { supabase: 0, csv: 0 };
+const STRICT_SUPABASE_ANALYTICS = true;
 
-async function loadSupabaseOrCSV(table, csvPath) {
+async function loadSupabaseOrCSV(table, csvPath, opts = {}) {
+  const allowCsvFallback = opts.allowCsvFallback === true;
   if (sb) {
     const { data, error } = await sb.from(table).select('*');
     if (!error && Array.isArray(data)) {
       sourceStats.supabase += 1;
       return data.map(normalizeRow);
+    }
+    if (STRICT_SUPABASE_ANALYTICS && !allowCsvFallback) {
+      throw new Error(`Supabase load failed for ${table}: ${error?.message || 'unknown error'}`);
     }
     console.warn(`Supabase load failed for ${table}; falling back to CSV`, error);
   }
@@ -359,7 +370,7 @@ function cumulativeByDate(rows) {
 }
 
 async function main() {
-  const [daily, income, expenses, projects, targets, habits, blocks, voices, sleepLog, platformDaily] = await Promise.all([
+  const [daily, income, expenses, projects, targets, habits, blocks, voices, sleepLog, platformDaily, expenseTags] = await Promise.all([
     loadSupabaseOrCSV('daily_logs', '../logs/daily_log.csv'),
     loadSupabaseOrCSV('income_logs', '../logs/income.csv'),
     loadSupabaseOrCSV('expense_logs', '../logs/expenses.csv'),
@@ -369,12 +380,13 @@ async function main() {
     loadSupabaseOrCSV('time_blocks', '../logs/time_blocks.csv'),
     loadSupabaseOrCSV('voice_journal', '../logs/voice_journal.csv'),
     loadSupabaseOrCSV('sleep_log', '../logs/sleep_log.csv'),
-    loadSupabaseOrCSV('platform_message_daily', '../logs/platform_message_daily.csv')
+    loadSupabaseOrCSV('platform_message_daily', '../logs/platform_message_daily.csv'),
+    loadSupabaseOrCSV('expense_tags', '../logs/expense_tags.csv')
   ]);
 
   const d7 = lastNDays(daily, 7);
-  const d30Income = lastNDays(income, 30);
-  const d30Exp = lastNDays(expenses, 30);
+  const d30Income = lastNDays(income, 30).filter(r => (r.currency || 'UZS').toUpperCase() === 'UZS');
+  const d30Exp = lastNDays(expenses, 30).filter(r => (r.currency || 'UZS').toUpperCase() === 'UZS');
   const voiceRows7 = lastNDays(voices, 7, 'created_at_utc');
   const voice7 = voiceRows7.length;
 
@@ -431,10 +443,10 @@ async function main() {
   trendEl.textContent = trend;
   trendEl.className = `badge ${trend==='improving'?'good':trend==='declining'?'bad':'warn'}`;
 
-  document.getElementById('kpiNet').textContent = `$${net30.toFixed(0)}`;
+  document.getElementById('kpiNet').textContent = `${Math.round(net30).toLocaleString()} UZS`;
   const incBadge = document.getElementById('kpiIncomeStatus');
-  incBadge.textContent = net30 >= 1000 ? 'on target' : 'below target';
-  incBadge.className = `badge ${net30 >= 1000 ? 'good' : 'bad'}`;
+  incBadge.textContent = net30 >= 5000000 ? 'on target' : 'below target';
+  incBadge.className = `badge ${net30 >= 5000000 ? 'good' : 'bad'}`;
 
   document.getElementById('kpiRisk').textContent = `${risk}/100`;
   const riskB = document.getElementById('kpiRiskBadge');
@@ -556,6 +568,36 @@ async function main() {
     options: { plugins:{legend:{labels:{color:'#dbe7ff'}}} }
   });
 
+  const latestSpendDate = [...expenseTags]
+    .map(r => r.date)
+    .filter(Boolean)
+    .sort()
+    .at(-1);
+  const spendRows = latestSpendDate ? expenseTags.filter(r => r.date === latestSpendDate) : [];
+  const needsTotal = spendRows.filter(r => (r.need_want || '').toLowerCase() === 'need').reduce((a,r)=>a+num(r.amount),0);
+  const wantsTotal = spendRows.filter(r => (r.need_want || '').toLowerCase() === 'want').reduce((a,r)=>a+num(r.amount),0);
+  const unknownSpend = spendRows.filter(r => !['need','want'].includes((r.need_want || '').toLowerCase())).reduce((a,r)=>a+num(r.amount),0);
+  const spendDen = needsTotal + wantsTotal + unknownSpend;
+  new Chart(document.getElementById('needsWantsChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Needs','Wants','Unknown'],
+      datasets: [{
+        data: [needsTotal, wantsTotal, unknownSpend],
+        backgroundColor: ['#22c55e','#f97316','#64748b']
+      }]
+    },
+    options: { plugins:{legend:{labels:{color:'#dbe7ff'}}} }
+  });
+  const nwSummary = document.getElementById('needsWantsSummary');
+  if (spendDen > 0) {
+    const needsPct = (needsTotal / spendDen) * 100;
+    const wantsPct = (wantsTotal / spendDen) * 100;
+    nwSummary.textContent = `Date ${latestSpendDate}: Needs ${needsTotal.toLocaleString()} (${needsPct.toFixed(1)}%) • Wants ${wantsTotal.toLocaleString()} (${wantsPct.toFixed(1)}%)`;
+  } else {
+    nwSummary.textContent = 'No tagged spend rows yet.';
+  }
+
   const insights = [];
   const wowDeep = weekOverWeekByKey(dailySorted, 'deep_work_hours');
   const wowLearn = weekOverWeekByKey(dailySorted, 'learning_hours');
@@ -569,6 +611,11 @@ async function main() {
     const telegram = platformRows.find(r => (r.platform||'').toLowerCase()==='telegram');
     const tgShare = telegram ? (num(telegram.total_messages)/totalP)*100 : 0;
     insights.push([`Telegram share today: ${tgShare.toFixed(1)}% of all tracked messages`, tgShare >= 40 ? 'high focus on chat' : 'balanced']);
+  }
+  if (spendDen > 0) {
+    const needsPct = (needsTotal / spendDen) * 100;
+    const wantsPct = (wantsTotal / spendDen) * 100;
+    insights.push([`Needs vs wants today: ${needsPct.toFixed(1)}% / ${wantsPct.toFixed(1)}%`, wantsPct <= 20 ? 'disciplined spend' : 'watch discretionary spend']);
   }
 
   const it = document.getElementById('insightsTable');
