@@ -179,6 +179,7 @@
           <thead><tr><th>Alert</th><th>Severity</th></tr></thead>
           <tbody id="alertsTable"></tbody>
         </table>
+        <div class="note" id="immediateAction">Immediate action: --</div>
       </div>
     </div>
   </div>
@@ -640,6 +641,20 @@ async function main() {
   if (projects.filter(p => (p.status||'').toLowerCase() === 'active').length > 3) alerts.push(['Too many active projects (>3)', 'medium']);
   if (voice7 === 0) alerts.push(['No voice-journal entries in last 7 days', 'low']);
   if (staleDays != null && staleDays > 2) alerts.push([`Daily log appears stale (${staleDays} days old)`, 'high']);
+
+  const immediateAction = document.getElementById('immediateAction');
+  const topHigh = alerts.find(([, sev]) => sev === 'high');
+  const topMed = alerts.find(([, sev]) => sev === 'medium');
+  const topLow = alerts.find(([, sev]) => sev === 'low');
+  if (topHigh) {
+    immediateAction.textContent = `Immediate action: fix high-severity risk first → ${topHigh[0]}`;
+  } else if (topMed) {
+    immediateAction.textContent = `Immediate action: handle medium risk next → ${topMed[0]}`;
+  } else if (topLow) {
+    immediateAction.textContent = `Immediate action: optional quality boost → ${topLow[0]}`;
+  } else {
+    immediateAction.textContent = 'Immediate action: keep momentum; no major risk detected.';
+  }
 
   const highAlerts = alerts.filter(([, sev]) => sev === 'high').length;
   const medAlerts = alerts.filter(([, sev]) => sev === 'medium').length;
