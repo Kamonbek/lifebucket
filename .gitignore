@@ -1,7 +1,11 @@
 node_modules/
 .env.local
 .env
+.env.*
+!.env.example
 .DS_Store
 .state/
 __pycache__/
+*.pyc
+*.pyo
 logs/voice_journal.csv

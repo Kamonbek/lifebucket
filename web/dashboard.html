@@ -112,6 +112,12 @@
         <div class="badge" id="kpiSleepBadge">--</div>
       </div>
 
+      <div class="card kpi">
+        <div class="kpi-title">Data Quality</div>
+        <div class="kpi-value" id="kpiDataQuality">--</div>
+        <div class="badge" id="kpiDataQualityBadge">--</div>
+      </div>
+
       <div class="card wide">
         <h3 class="section-title">Goal Progress Bars</h3>
         <div id="progressBars"></div>
@@ -167,14 +173,47 @@
 
 <script>
 function parseCSV(text) {
-  const lines = text.trim().split(/\r?\n/).filter(Boolean);
-  if (!lines.length) return [];
-  const headers = lines[0].split(',').map(h => h.trim());
-  return lines.slice(1).map(line => {
-    const cols = line.split(',');
-    const row = {};
-    headers.forEach((h, i) => row[h] = (cols[i] || '').trim());
-    return row;
+  const src = (text || '').trim();
+  if (!src) return [];
+  const rows = [];
+  let row = [];
+  let cell = '';
+  let q = false;
+  for (let i = 0; i < src.length; i++) {
+    const ch = src[i];
+    const next = src[i + 1];
+    if (ch === '"') {
+      if (q && next === '"') {
+        cell += '"';
+        i++;
+      } else {
+        q = !q;
+      }
+      continue;
+    }
+    if (ch === ',' && !q) {
+      row.push(cell.trim());
+      cell = '';
+      continue;
+    }
+    if ((ch === '\n' || ch === '\r') && !q) {
+      if (ch === '\r' && next === '\n') i++;
+      row.push(cell.trim());
+      if (row.some(v => v !== '')) rows.push(row);
+      row = [];
+      cell = '';
+      continue;
+    }
+    cell += ch;
+  }
+  row.push(cell.trim());
+  if (row.some(v => v !== '')) rows.push(row);
+  if (!rows.length) return [];
+  const headers = rows[0];
+  return rows.slice(1).map(cols => {
+    const out = {};
+    headers.forEach((h, i) => { out[h] = cols[i] ?? ''; });
+    return out;
   });
 }
 
@@ -380,6 +419,13 @@ async function main() {
   document.getElementById('updatedAt').textContent = `Updated ${new Date().toLocaleString()} • latest daily_log=${latestDailyDate || 'n/a'} • ${freshness}`;
   const srcMode = sourceStats.csv === 0 ? 'Supabase only' : (sourceStats.supabase > 0 ? 'Supabase + CSV fallback' : 'CSV fallback only');
   document.getElementById('dataSourceBadge').textContent = `Data source mode: ${srcMode}`;
+
+  const dataQualityScore = Math.max(0, 100 - (sourceStats.csv * 8) - ((staleDays || 0) * 10));
+  const dqState = dataQualityScore >= 80 ? 'high confidence' : dataQualityScore >= 55 ? 'moderate confidence' : 'low confidence';
+  document.getElementById('kpiDataQuality').textContent = `${Math.round(dataQualityScore)}/100`;
+  const dqBadge = document.getElementById('kpiDataQualityBadge');
+  dqBadge.textContent = `${dqState} • fallback=${sourceStats.csv}`;
+  dqBadge.className = `badge ${dataQualityScore >= 80 ? 'good' : dataQualityScore >= 55 ? 'warn' : 'bad'}`;
   document.getElementById('kpiScore').textContent = score.toFixed(1);
   const trendEl = document.getElementById('kpiTrend');
   trendEl.textContent = trend;
