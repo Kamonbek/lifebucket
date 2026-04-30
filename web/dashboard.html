@@ -107,6 +107,12 @@
       </div>
 
       <div class="card kpi">
+        <div class="kpi-title">Voice recency</div>
+        <div class="kpi-value" id="kpiVoiceRecency">--</div>
+        <div class="badge" id="kpiVoiceRecencyBadge">--</div>
+      </div>
+
+      <div class="card kpi">
         <div class="kpi-title">Sleep duration (last)</div>
         <div class="kpi-value" id="kpiSleepDuration">--</div>
         <div class="badge" id="kpiSleepBadge">--</div>
@@ -396,6 +402,12 @@ async function main() {
   const d30Exp = lastNDays(expenses, 30).filter(r => (r.currency || 'UZS').toUpperCase() === 'UZS');
   const voiceRows7 = lastNDays(voices, 7, 'created_at_utc');
   const voice7 = voiceRows7.length;
+  const latestVoiceTs = [...voices]
+    .map(v => v.created_at_utc)
+    .filter(Boolean)
+    .sort()
+    .at(-1);
+  const voiceStaleDays = latestVoiceTs ? daysStale(latestVoiceTs) : null;
 
   const avgDeep = mean(d7.map(r => num(r.deep_work_hours)));
   const avgLearn = mean(d7.map(r => num(r.learning_hours)));
@@ -469,6 +481,19 @@ async function main() {
     : 0;
   voiceBadge.textContent = voice7 > 0 ? `journal active • avg ${Math.round(avgVoiceLen)} chars` : 'no entries this week';
   voiceBadge.className = `badge ${voice7 > 0 ? 'good' : 'warn'}`;
+
+  const voiceRecencyEl = document.getElementById('kpiVoiceRecency');
+  const voiceRecencyBadge = document.getElementById('kpiVoiceRecencyBadge');
+  if (voiceStaleDays == null) {
+    voiceRecencyEl.textContent = '--';
+    voiceRecencyBadge.textContent = 'no historical voice data';
+    voiceRecencyBadge.className = 'badge warn';
+  } else {
+    voiceRecencyEl.textContent = `${voiceStaleDays}d`;
+    const recencyState = voiceStaleDays <= 2 ? 'fresh reflection loop' : (voiceStaleDays <= 7 ? 'watch cadence' : 'stale journaling risk');
+    voiceRecencyBadge.textContent = recencyState;
+    voiceRecencyBadge.className = `badge ${voiceStaleDays <= 2 ? 'good' : voiceStaleDays <= 7 ? 'warn' : 'bad'}`;
+  }
 
   const streakBadge = document.querySelector('.kpi:nth-child(4) .badge');
   if (streakBadge) {
@@ -640,6 +665,7 @@ async function main() {
   if (exp30 > income30) alerts.push(['30d expenses exceed 30d income', 'high']);
   if (projects.filter(p => (p.status||'').toLowerCase() === 'active').length > 3) alerts.push(['Too many active projects (>3)', 'medium']);
   if (voice7 === 0) alerts.push(['No voice-journal entries in last 7 days', 'low']);
+  if (voiceStaleDays != null && voiceStaleDays > 14) alerts.push([`Voice journaling stale (${voiceStaleDays} days since last entry)`, 'medium']);
   if (staleDays != null && staleDays > 2) alerts.push([`Daily log appears stale (${staleDays} days old)`, 'high']);
 
   const immediateAction = document.getElementById('immediateAction');
