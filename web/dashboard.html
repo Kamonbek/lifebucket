@@ -130,6 +130,12 @@
         <div class="badge" id="kpiAlertBadge">--</div>
       </div>
 
+      <div class="card kpi">
+        <div class="kpi-title">Target Hit Rate</div>
+        <div class="kpi-value" id="kpiTargetHit">--</div>
+        <div class="badge" id="kpiTargetHitBadge">--</div>
+      </div>
+
       <div class="card wide">
         <h3 class="section-title">Goal Progress Bars</h3>
         <div id="progressBars"></div>
@@ -528,18 +534,28 @@ async function main() {
 
   const pb = document.getElementById('progressBars');
   const st = document.getElementById('statusTable');
+  let trackedCount = 0;
+  let onTrackCount = 0;
   targets.forEach(t => {
     const metric = t.metric;
     if (!(metric in actuals)) return;
     const actual = actuals[metric];
     const target = num(t.target);
     const status = trackStatus(actual, target);
+    trackedCount += 1;
+    if (status === 'on_track') onTrackCount += 1;
     pb.appendChild(makeBar(metric, actual, target, t.unit, status));
 
     const tr = document.createElement('tr');
     tr.innerHTML = `<td>${metric}</td><td><span class="pill ${status==='on_track'?'ok':'off'}">${status}</span></td>`;
     st.appendChild(tr);
   });
+
+  const hitRate = trackedCount ? (onTrackCount / trackedCount) : 0;
+  document.getElementById('kpiTargetHit').textContent = `${Math.round(hitRate * 100)}%`;
+  const hitBadge = document.getElementById('kpiTargetHitBadge');
+  hitBadge.textContent = `${onTrackCount}/${trackedCount} metrics on-track`;
+  hitBadge.className = `badge ${hitRate >= 0.75 ? 'good' : hitRate >= 0.5 ? 'warn' : 'bad'}`;
 
   const dailySorted = [...daily].sort((a,b)=>new Date(a.date)-new Date(b.date));
   const labels = dailySorted.map(r => r.date);

@@ -1,11 +1,11 @@
 # Life Analytics Dashboard v2
 
-Generated: 2026-04-30 18:38:36
+Generated: 2026-05-01 00:42:18
 
 ## Executive cockpit
 - Execution velocity score: 84.6/100
 - Direction trend: stable
-- Project delivery risk score: 20/100
+- Project delivery risk score: 28/100
 - Active projects: 1
 
 ## Goal progress bars
