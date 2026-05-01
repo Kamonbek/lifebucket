@@ -76,7 +76,13 @@
         <h1>Life OS Dashboard</h1>
         <div class="sub" id="updatedAt">Loading real data...</div>
       </div>
-      <div class="sub" id="dataSourceBadge">Data source: loading...</div>
+      <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
+        <div class="sub" id="dataSourceBadge">Data source: loading...</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+          <span class="pill" id="freshnessBadge">freshness: --</span>
+          <span class="pill" id="routeHealthBadge">analytics route: --</span>
+        </div>
+      </div>
     </div>
 
     <div class="grid">
@@ -456,6 +462,12 @@ async function main() {
   document.getElementById('updatedAt').textContent = `Updated ${new Date().toLocaleString()} • latest daily_log=${latestDailyDate || 'n/a'} • ${freshness}`;
   const srcMode = sourceStats.csv === 0 ? 'Supabase only' : (sourceStats.supabase > 0 ? 'Supabase + CSV fallback' : 'CSV fallback only');
   document.getElementById('dataSourceBadge').textContent = `Data source mode: ${srcMode}`;
+  const freshnessBadge = document.getElementById('freshnessBadge');
+  freshnessBadge.textContent = staleDays == null ? 'freshness: unknown' : `freshness: ${staleDays}d`;
+  freshnessBadge.className = `pill ${staleDays == null ? '' : staleDays <= 1 ? 'ok' : staleDays <= 3 ? '' : 'off'}`;
+  const routeHealthBadge = document.getElementById('routeHealthBadge');
+  routeHealthBadge.textContent = `analytics route: ${sourceStats.csv === 0 ? 'db-truth' : 'degraded (csv fallback)'}`;
+  routeHealthBadge.className = `pill ${sourceStats.csv === 0 ? 'ok' : 'off'}`;
 
   const dataQualityScore = Math.max(0, 100 - (sourceStats.csv * 8) - ((staleDays || 0) * 10));
   const dqState = dataQualityScore >= 80 ? 'high confidence' : dataQualityScore >= 55 ? 'moderate confidence' : 'low confidence';
@@ -705,6 +717,7 @@ async function main() {
   const alertBadge = document.getElementById('kpiAlertBadge');
   alertBadge.textContent = `${highAlerts} high • ${medAlerts} medium`;
   alertBadge.className = `badge ${highAlerts > 0 ? 'bad' : medAlerts > 0 ? 'warn' : 'good'}`;
+  riskB.textContent = `${riskLabel} • ${highAlerts} high alerts`;
 
   const at = document.getElementById('alertsTable');
   if (!alerts.length) {
