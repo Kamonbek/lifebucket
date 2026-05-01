@@ -9,4 +9,7 @@ __pycache__/
 *.pyc
 *.pyo
 *.bak_*
+*.log
+.pytest_cache/
+.venv/
 logs/voice_journal.csv

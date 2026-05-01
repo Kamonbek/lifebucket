@@ -142,6 +142,12 @@
         <div class="badge" id="kpiTargetHitBadge">--</div>
       </div>
 
+      <div class="card kpi">
+        <div class="kpi-title">Weekly Momentum</div>
+        <div class="kpi-value" id="kpiMomentum">--</div>
+        <div class="badge" id="kpiMomentumBadge">--</div>
+      </div>
+
       <div class="card wide">
         <h3 class="section-title">Goal Progress Bars</h3>
         <div id="progressBars"></div>
@@ -686,6 +692,18 @@ async function main() {
   }
   const insightConfidence = confidenceLabel(dailySorted.length, sourceStats.csv);
   document.getElementById('insightConfidence').textContent = `Confidence: ${insightConfidence} (daily_rows=${dailySorted.length}, csv_fallback_tables=${sourceStats.csv})`;
+
+  const momentumScore = Math.max(-100, Math.min(100,
+    (deepDelta * 25) +
+    (learnDelta * 18) +
+    ((mainDone - 0.7) * 40)
+  ));
+  const momentumEl = document.getElementById('kpiMomentum');
+  const momentumBadge = document.getElementById('kpiMomentumBadge');
+  momentumEl.textContent = `${momentumScore >= 0 ? '+' : ''}${momentumScore.toFixed(0)}`;
+  const momentumState = momentumScore >= 15 ? 'accelerating' : momentumScore <= -15 ? 'slipping' : 'flat';
+  momentumBadge.textContent = `${momentumState} • deep ${deepDelta >= 0 ? '+' : ''}${deepDelta.toFixed(2)}h • learn ${learnDelta >= 0 ? '+' : ''}${learnDelta.toFixed(2)}h`;
+  momentumBadge.className = `badge ${momentumScore >= 15 ? 'good' : momentumScore <= -15 ? 'bad' : 'warn'}`;
 
   const alerts = [];
   if (avgDeep < 2.5) alerts.push(['Deep work below 2.5h/day (7d avg)', 'high']);
