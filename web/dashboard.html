@@ -97,6 +97,11 @@
         <div class="badge" id="kpiIncomeStatus">--</div>
       </div>
       <div class="card kpi">
+        <div class="kpi-title">Burn Ratio (30d)</div>
+        <div class="kpi-value" id="kpiBurnRatio">--</div>
+        <div class="badge" id="kpiBurnBadge">--</div>
+      </div>
+      <div class="card kpi">
         <div class="kpi-title">Project Risk</div>
         <div class="kpi-value" id="kpiRisk">--</div>
         <div class="badge" id="kpiRiskBadge">--</div>
@@ -491,6 +496,20 @@ async function main() {
   incBadge.textContent = net30 >= 5000000 ? 'on target' : 'below target';
   incBadge.className = `badge ${net30 >= 5000000 ? 'good' : 'bad'}`;
 
+  const burnRatio = income30 > 0 ? (exp30 / income30) : null;
+  const burnEl = document.getElementById('kpiBurnRatio');
+  const burnBadge = document.getElementById('kpiBurnBadge');
+  if (burnRatio == null) {
+    burnEl.textContent = '--';
+    burnBadge.textContent = 'no 30d income data';
+    burnBadge.className = 'badge warn';
+  } else {
+    burnEl.textContent = `${burnRatio.toFixed(2)}x`;
+    const burnState = burnRatio <= 0.7 ? 'healthy cushion' : burnRatio <= 1 ? 'tight but controlled' : 'overspending';
+    burnBadge.textContent = `${burnState} • spend ${(burnRatio * 100).toFixed(0)}% of income`;
+    burnBadge.className = `badge ${burnRatio <= 0.7 ? 'good' : burnRatio <= 1 ? 'warn' : 'bad'}`;
+  }
+
   document.getElementById('kpiRisk').textContent = `${risk}/100`;
   const riskB = document.getElementById('kpiRiskBadge');
   const riskLabel = risk >= 60 ? 'high risk' : risk >= 35 ? 'medium risk' : 'low risk';
@@ -682,6 +701,9 @@ async function main() {
     const needsPct = (needsTotal / spendDen) * 100;
     const wantsPct = (wantsTotal / spendDen) * 100;
     insights.push([`Needs vs wants today: ${needsPct.toFixed(1)}% / ${wantsPct.toFixed(1)}%`, wantsPct <= 20 ? 'disciplined spend' : 'watch discretionary spend']);
+  }
+  if (burnRatio != null) {
+    insights.push([`30d burn ratio: ${burnRatio.toFixed(2)}x (expenses/income)`, burnRatio <= 1 ? 'cashflow controlled' : 'cashflow at risk']);
   }
 
   const it = document.getElementById('insightsTable');
