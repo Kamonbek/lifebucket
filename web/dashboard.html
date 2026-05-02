@@ -109,7 +109,7 @@
       <div class="card kpi">
         <div class="kpi-title">Streak (main task)</div>
         <div class="kpi-value" id="kpiStreak">--</div>
-        <div class="badge good">Consistency</div>
+        <div class="badge good" id="kpiStreakBadge">Consistency</div>
       </div>
       <div class="card kpi">
         <div class="kpi-title">Voice entries (7d)</div>
@@ -127,6 +127,12 @@
         <div class="kpi-title">Sleep duration (last)</div>
         <div class="kpi-value" id="kpiSleepDuration">--</div>
         <div class="badge" id="kpiSleepBadge">--</div>
+      </div>
+
+      <div class="card kpi">
+        <div class="kpi-title">Sleep consistency (7d)</div>
+        <div class="kpi-value" id="kpiSleepConsistency">--</div>
+        <div class="badge" id="kpiSleepConsistencyBadge">--</div>
       </div>
 
       <div class="card kpi">
@@ -538,7 +544,7 @@ async function main() {
     voiceRecencyBadge.className = `badge ${voiceStaleDays <= 2 ? 'good' : voiceStaleDays <= 7 ? 'warn' : 'bad'}`;
   }
 
-  const streakBadge = document.querySelector('.kpi:nth-child(4) .badge');
+  const streakBadge = document.getElementById('kpiStreakBadge');
   if (streakBadge) {
     streakBadge.textContent = `Habits ${pct(habitScore)}% • Plan exec ${pct(executionRate)}%`;
     streakBadge.className = `badge ${executionRate >= 0.8 ? 'good' : 'warn'}`;
@@ -558,6 +564,22 @@ async function main() {
     const sleepState = latestSleepHours >= 7 && latestSleepHours <= 9 ? 'recovered' : (latestSleepHours < 7 ? 'sleep debt risk' : 'oversleep risk');
     sleepBadgeEl.textContent = `${sleepState} • ${latestSleep?.wake_time_local || ''}`;
     sleepBadgeEl.className = `badge ${sleepState==='recovered' ? 'good' : 'warn'}`;
+  }
+
+  const sleep7 = sleepSorted.slice(0, 7).map(sleepHoursFromRow).filter(v => v != null);
+  const sleepInRange = sleep7.filter(h => h >= 7 && h <= 9).length;
+  const sleepConsistency = sleep7.length ? (sleepInRange / sleep7.length) : null;
+  const sleepConsistencyEl = document.getElementById('kpiSleepConsistency');
+  const sleepConsistencyBadgeEl = document.getElementById('kpiSleepConsistencyBadge');
+  if (sleepConsistency == null) {
+    sleepConsistencyEl.textContent = '--';
+    sleepConsistencyBadgeEl.textContent = 'insufficient 7d sleep rows';
+    sleepConsistencyBadgeEl.className = 'badge warn';
+  } else {
+    sleepConsistencyEl.textContent = `${Math.round(sleepConsistency * 100)}%`;
+    const consistencyState = sleepConsistency >= 0.8 ? 'stable recovery band' : (sleepConsistency >= 0.5 ? 'inconsistent sleep window' : 'high sleep drift risk');
+    sleepConsistencyBadgeEl.textContent = `${consistencyState} • n=${sleep7.length}`;
+    sleepConsistencyBadgeEl.className = `badge ${sleepConsistency >= 0.8 ? 'good' : sleepConsistency >= 0.5 ? 'warn' : 'bad'}`;
   }
 
   const actuals = {
