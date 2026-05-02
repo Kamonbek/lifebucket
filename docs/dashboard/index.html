@@ -199,6 +199,12 @@
       </div>
 
       <div class="card mid">
+        <h3 class="section-title">Voice Journal Trend (14d)</h3>
+        <canvas id="voiceTrendChart" height="180"></canvas>
+        <div class="note" id="voiceTrendSummary">Voice cadence: --</div>
+      </div>
+
+      <div class="card mid">
         <h3 class="section-title">Needs vs Wants (today)</h3>
         <canvas id="needsWantsChart" height="180"></canvas>
         <div class="note" id="needsWantsSummary">Needs: -- • Wants: --</div>
@@ -690,6 +696,34 @@ async function main() {
     },
     options: { plugins:{legend:{labels:{color:'#dbe7ff'}}} }
   });
+
+  const voiceByDayMap = new Map();
+  voice.forEach(v => {
+    const d = (v.created_at_utc || '').slice(0,10);
+    if (!d) return;
+    voiceByDayMap.set(d, (voiceByDayMap.get(d) || 0) + 1);
+  });
+  const voiceTrendLabels = [];
+  const voiceTrendVals = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0,10);
+    voiceTrendLabels.push(key);
+    voiceTrendVals.push(voiceByDayMap.get(key) || 0);
+  }
+  new Chart(document.getElementById('voiceTrendChart'), {
+    type: 'bar',
+    data: {
+      labels: voiceTrendLabels,
+      datasets: [{ label:'Voice entries', data: voiceTrendVals, backgroundColor:'#2dd4bf' }]
+    },
+    options: { responsive:true, plugins:{legend:{labels:{color:'#dbe7ff'}}}, scales:{x:{ticks:{color:'#9fb0d6'}}, y:{ticks:{color:'#9fb0d6'}, beginAtZero:true}} }
+  });
+  const voiceTrendTotal14 = voiceTrendVals.reduce((a,b)=>a+b,0);
+  const voiceActiveDays14 = voiceTrendVals.filter(v => v > 0).length;
+  const voiceTrendSummary = document.getElementById('voiceTrendSummary');
+  voiceTrendSummary.textContent = `Last 14d: ${voiceTrendTotal14} entries across ${voiceActiveDays14} active days`;
 
   const latestSpendDate = [...expenseTags]
     .map(r => r.date)
