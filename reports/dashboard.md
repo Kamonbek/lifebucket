@@ -1,6 +1,6 @@
 # Life Analytics Dashboard v2
 
-Generated: 2026-05-01 06:47:05
+Generated: 2026-05-02 00:59:47
 
 ## Executive cockpit
 - Execution velocity score: 84.6/100
@@ -14,7 +14,7 @@ Generated: 2026-05-01 06:47:05
 - main_task_done_rate (7d): [████████████████████] 1.00/0.85 (118%) -> on_track
 - exercise_rate (7d): [████████████████████] 1.00/0.70 (143%) -> on_track
 - energy_score (7d): [████████████████████] 8.00/8.00 (100%) -> on_track
-- net_income (30d): [░░░░░░░░░░░░░░░░░░░░] -77910.00/13000000.00 (-1%) -> off_track
+- net_income (30d): [██████░░░░░░░░░░░░░░] 3922090.00/13000000.00 (30%) -> off_track
 
 ## Weekly performance summary
 - Avg deep work/day: 3.00h
@@ -28,9 +28,9 @@ Generated: 2026-05-01 06:47:05
 - Main task done streak: 1 day(s)
 
 ## Finance (30d, UZS-first)
-- Income: 0
+- Income: 4000000.00 UZS, 500.00 USD
 - Expenses: 77910.00 UZS
-- Net (UZS): -77,910 UZS
+- Net (UZS): 3,922,090 UZS
 
 ## Latest day snapshot
 - Date: 2026-04-28
@@ -48,7 +48,7 @@ Generated: 2026-05-01 06:47:05
 - main_task_done_rate: on_track (actual=1.00, target=0.85)
 - exercise_rate: on_track (actual=1.00, target=0.70)
 - energy_score: on_track (actual=8.00, target=8.00)
-- net_income: off_track (actual=-77910.00, target=13000000.00)
+- net_income: off_track (actual=3922090.00, target=13000000.00)
 
 ## Auto recommendations
 - Lock one non-negotiable 120-minute deep-work block in morning calendar.

@@ -752,12 +752,13 @@ async function main() {
 
   const highAlerts = alerts.filter(([, sev]) => sev === 'high').length;
   const medAlerts = alerts.filter(([, sev]) => sev === 'medium').length;
-  const pressureScore = Math.max(0, 100 - (highAlerts * 35 + medAlerts * 15));
+  const lowAlerts = alerts.filter(([, sev]) => sev === 'low').length;
+  const pressureScore = Math.max(0, 100 - (highAlerts * 35 + medAlerts * 15 + lowAlerts * 5));
   document.getElementById('kpiAlertPressure').textContent = `${pressureScore}`;
   const alertBadge = document.getElementById('kpiAlertBadge');
-  alertBadge.textContent = `${highAlerts} high • ${medAlerts} medium`;
+  alertBadge.textContent = `${highAlerts} high • ${medAlerts} medium • ${lowAlerts} low`;
   alertBadge.className = `badge ${highAlerts > 0 ? 'bad' : medAlerts > 0 ? 'warn' : 'good'}`;
-  riskB.textContent = `${riskLabel} • ${highAlerts} high alerts`;
+  riskB.textContent = `${riskLabel} • ${highAlerts} high alerts • ${medAlerts} medium`;
 
   const at = document.getElementById('alertsTable');
   if (!alerts.length) {

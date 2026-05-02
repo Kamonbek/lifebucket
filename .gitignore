@@ -13,3 +13,5 @@ __pycache__/
 .pytest_cache/
 .venv/
 logs/voice_journal.csv
+logs/chat_events.csv
+logs/numeric_facts.csv
