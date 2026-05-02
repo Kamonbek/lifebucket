@@ -102,6 +102,11 @@
         <div class="badge" id="kpiBurnBadge">--</div>
       </div>
       <div class="card kpi">
+        <div class="kpi-title">Savings Rate (30d)</div>
+        <div class="kpi-value" id="kpiSavingsRate">--</div>
+        <div class="badge" id="kpiSavingsBadge">--</div>
+      </div>
+      <div class="card kpi">
         <div class="kpi-title">Project Risk</div>
         <div class="kpi-value" id="kpiRisk">--</div>
         <div class="badge" id="kpiRiskBadge">--</div>
@@ -505,15 +510,26 @@ async function main() {
   const burnRatio = income30 > 0 ? (exp30 / income30) : null;
   const burnEl = document.getElementById('kpiBurnRatio');
   const burnBadge = document.getElementById('kpiBurnBadge');
+  const savingsRate = income30 > 0 ? (net30 / income30) : null;
+  const savingsEl = document.getElementById('kpiSavingsRate');
+  const savingsBadge = document.getElementById('kpiSavingsBadge');
   if (burnRatio == null) {
     burnEl.textContent = '--';
-    burnBadge.textContent = 'no 30d income data';
+    burnBadge.textContent = 'no income rows in last 30d';
     burnBadge.className = 'badge warn';
+    savingsEl.textContent = '--';
+    savingsBadge.textContent = 'awaiting income baseline';
+    savingsBadge.className = 'badge warn';
   } else {
     burnEl.textContent = `${burnRatio.toFixed(2)}x`;
     const burnState = burnRatio <= 0.7 ? 'healthy cushion' : burnRatio <= 1 ? 'tight but controlled' : 'overspending';
     burnBadge.textContent = `${burnState} • spend ${(burnRatio * 100).toFixed(0)}% of income`;
     burnBadge.className = `badge ${burnRatio <= 0.7 ? 'good' : burnRatio <= 1 ? 'warn' : 'bad'}`;
+
+    savingsEl.textContent = `${(savingsRate * 100).toFixed(0)}%`;
+    const savingsState = savingsRate >= 0.30 ? 'strong saving buffer' : savingsRate >= 0.10 ? 'positive but thin' : savingsRate >= 0 ? 'fragile buffer' : 'deficit month';
+    savingsBadge.textContent = `${savingsState} • net ${fmtUZS(net30)}`;
+    savingsBadge.className = `badge ${savingsRate >= 0.30 ? 'good' : savingsRate >= 0.10 ? 'warn' : 'bad'}`;
   }
 
   document.getElementById('kpiRisk').textContent = `${risk}/100`;
