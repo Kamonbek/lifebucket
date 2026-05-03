@@ -81,6 +81,7 @@
         <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
           <span class="pill" id="freshnessBadge">freshness: --</span>
           <span class="pill" id="routeHealthBadge">analytics route: --</span>
+          <span class="pill" id="coverageBadge">db coverage: --</span>
         </div>
       </div>
     </div>
@@ -496,6 +497,11 @@ async function main() {
   const routeHealthBadge = document.getElementById('routeHealthBadge');
   routeHealthBadge.textContent = `analytics route: ${sourceStats.csv === 0 ? 'db-truth' : 'degraded (csv fallback)'}`;
   routeHealthBadge.className = `pill ${sourceStats.csv === 0 ? 'ok' : 'off'}`;
+  const coverageBadge = document.getElementById('coverageBadge');
+  const totalReads = sourceStats.supabase + sourceStats.csv;
+  const dbCoverage = totalReads > 0 ? Math.round((sourceStats.supabase / totalReads) * 100) : 0;
+  coverageBadge.textContent = `db coverage: ${dbCoverage}%`;
+  coverageBadge.className = `pill ${dbCoverage >= 90 ? 'ok' : dbCoverage >= 70 ? '' : 'off'}`;
 
   const dataQualityScore = Math.max(0, 100 - (sourceStats.csv * 8) - ((staleDays || 0) * 10));
   const dqState = dataQualityScore >= 80 ? 'high confidence' : dataQualityScore >= 55 ? 'moderate confidence' : 'low confidence';
