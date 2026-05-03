@@ -198,6 +198,7 @@
       <div class="card mid">
         <h3 class="section-title">Platform Message Mix (today)</h3>
         <canvas id="platformMixChart" height="180"></canvas>
+        <div class="note" id="platformMixSummary">Platform focus: --</div>
       </div>
 
       <div class="card mid">
@@ -722,6 +723,22 @@ async function main() {
     },
     options: { plugins:{legend:{labels:{color:'#dbe7ff'}}} }
   });
+  const platformSummaryEl = document.getElementById('platformMixSummary');
+  if (!platformRows.length) {
+    platformSummaryEl.textContent = 'Platform focus: no message telemetry rows yet';
+  } else {
+    const totals = platformRows.map(r => ({
+      platform: r.platform || 'unknown',
+      total: num(r.total_messages),
+      voice: num(r.voice_messages),
+      text: num(r.text_messages)
+    }));
+    const grand = totals.reduce((a, r) => a + r.total, 0);
+    const top = totals.slice().sort((a, b) => b.total - a.total)[0];
+    const voiceShare = grand > 0 ? (totals.reduce((a, r) => a + r.voice, 0) / grand) : 0;
+    const textShare = grand > 0 ? (totals.reduce((a, r) => a + r.text, 0) / grand) : 0;
+    platformSummaryEl.textContent = `Platform focus: ${top.platform} ${Math.round((top.total / Math.max(grand,1)) * 100)}% • voice ${Math.round(voiceShare * 100)}% • text ${Math.round(textShare * 100)}%`;
+  }
 
   const voiceByDayMap = new Map();
   voice.forEach(v => {

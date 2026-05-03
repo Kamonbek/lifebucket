@@ -1,6 +1,6 @@
 # Life Analytics Dashboard v2
 
-Generated: 2026-05-03 13:24:13
+Generated: 2026-05-03 19:28:35
 
 ## Executive cockpit
 - Execution velocity score: 84.6/100
@@ -49,6 +49,9 @@ Generated: 2026-05-03 13:24:13
 - exercise_rate: on_track (actual=1.00, target=0.70)
 - energy_score: on_track (actual=8.00, target=8.00)
 - net_income: off_track (actual=3922090.00, target=13000000.00)
+
+## Alerts
+- No major alerts
 
 ## Auto recommendations
 - Lock one non-negotiable 120-minute deep-work block in morning calendar.

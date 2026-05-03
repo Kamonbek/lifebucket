@@ -63,7 +63,7 @@ def currency_sum(rows, start_date=None):
         d = parse_date(r.get("date", ""))
         if start_date and (not d or d < start_date):
             continue
-        cur = (r.get("currency") or "USD").upper()
+        cur = (r.get("currency") or "UZS").upper()
         amt = to_float(r.get("amount", "0"), 0.0)
         by_currency[cur] = by_currency.get(cur, 0.0) + amt
     return by_currency
@@ -181,9 +181,9 @@ def main():
 
     income30 = currency_sum(income, last_30)
     expense30 = currency_sum(expenses, last_30)
-    income30_usd = income30.get("USD", 0.0)
-    expense30_usd = expense30.get("USD", 0.0)
-    net30_usd = income30_usd - expense30_usd
+    income30_uzs = income30.get("UZS", 0.0)
+    expense30_uzs = expense30.get("UZS", 0.0)
+    net30_uzs = income30_uzs - expense30_uzs
 
     active_projects = [p for p in projects if p.get("status", "").lower() == "active"]
     risk = project_risk_score(active_projects)
@@ -225,7 +225,7 @@ def main():
         "main_task_done_rate": main_done7,
         "exercise_rate": exercise7,
         "energy_score": avg_energy7,
-        "net_income": net30_usd,
+        "net_income": net30_uzs,
     }
 
     lines = []
@@ -265,10 +265,10 @@ def main():
     lines.append(f"- Main task done streak: {main_done_streak_days} day(s)")
     lines.append("")
 
-    lines.append("## Finance (30d)")
+    lines.append("## Finance (30d, UZS-first)")
     lines.append(f"- Income: {format_currency_map(income30)}")
     lines.append(f"- Expenses: {format_currency_map(expense30)}")
-    lines.append(f"- Net (USD-only strict): {net30_usd:.2f} USD")
+    lines.append(f"- Net (UZS): {net30_uzs:,.0f} UZS")
     lines.append("")
 
     lines.append("## Latest day snapshot")
@@ -302,6 +302,22 @@ def main():
         lines.append(f"- {metric}: {status} (actual={a:.2f}, target={t:.2f})")
     lines.append("")
 
+    lines.append("## Alerts")
+    alerts = []
+    if avg_deep7 < 2.5:
+        alerts.append(f"- High: Deep work is below threshold ({avg_deep7:.2f}h/day < 2.50h/day).")
+    if main_done7 < 0.70:
+        alerts.append(f"- High: Main task completion is low ({pct(main_done7)} < 70%).")
+    if expense30_uzs > income30_uzs:
+        alerts.append(f"- High: 30d expenses exceed 30d income ({expense30_uzs:,.0f} > {income30_uzs:,.0f} UZS).")
+    if len(active_projects) > 3:
+        alerts.append(f"- Medium: Active projects overload ({len(active_projects)} > 3).")
+    if not alerts:
+        lines.append("- No major alerts")
+    else:
+        lines.extend(alerts)
+    lines.append("")
+
     lines.append("## Auto recommendations")
     recs = []
     if avg_deep7 < targets.get("deep_work_hours", {}).get("target", 4.0):
@@ -312,7 +328,7 @@ def main():
         recs.append("Attach exercise to an existing trigger (after waking or after work).")
     if risk >= 60:
         recs.append("Project risk is high: pause low-priority work and break deadlines into weekly milestones.")
-    if net30_usd < targets.get("net_income", {}).get("target", 1000.0):
+    if net30_uzs < targets.get("net_income", {}).get("target", 13000000.0):
         recs.append("Income pace is below target: prioritize activities with direct cash impact this week.")
 
     if recs:
