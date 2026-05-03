@@ -522,11 +522,12 @@ async function main() {
   syncLagBadge.textContent = syncLagDays == null ? 'supabase sync lag: unknown' : `supabase sync lag: ${syncLagDays}d`;
   syncLagBadge.className = `pill ${syncLagDays == null ? '' : syncLagDays <= 1 ? 'ok' : syncLagDays <= 3 ? '' : 'off'}`;
 
-  const dataQualityScore = Math.max(0, 100 - (sourceStats.csv * 8) - ((staleDays || 0) * 10));
+  const syncLagPenalty = syncLagDays == null ? 12 : Math.min(syncLagDays * 8, 32);
+  const dataQualityScore = Math.max(0, 100 - (sourceStats.csv * 8) - ((staleDays || 0) * 10) - syncLagPenalty);
   const dqState = dataQualityScore >= 80 ? 'high confidence' : dataQualityScore >= 55 ? 'moderate confidence' : 'low confidence';
   document.getElementById('kpiDataQuality').textContent = `${Math.round(dataQualityScore)}/100`;
   const dqBadge = document.getElementById('kpiDataQualityBadge');
-  dqBadge.textContent = `${dqState} • fallback=${sourceStats.csv}`;
+  dqBadge.textContent = `${dqState} • fallback=${sourceStats.csv} • sync_lag=${syncLagDays == null ? 'unknown' : `${syncLagDays}d`}`;
   dqBadge.className = `badge ${dataQualityScore >= 80 ? 'good' : dataQualityScore >= 55 ? 'warn' : 'bad'}`;
   document.getElementById('kpiScore').textContent = score.toFixed(1);
   const trendEl = document.getElementById('kpiTrend');
