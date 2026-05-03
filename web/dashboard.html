@@ -82,6 +82,7 @@
           <span class="pill" id="freshnessBadge">freshness: --</span>
           <span class="pill" id="routeHealthBadge">analytics route: --</span>
           <span class="pill" id="coverageBadge">db coverage: --</span>
+          <span class="pill" id="syncLagBadge">supabase sync lag: --</span>
         </div>
       </div>
     </div>
@@ -311,6 +312,17 @@ async function loadSupabaseOrCSV(table, csvPath, opts = {}) {
   return loadCSV(csvPath);
 }
 
+async function loadSupabaseOptional(table) {
+  if (!sb) return [];
+  const { data, error } = await sb.from(table).select('*').limit(1);
+  if (!error && Array.isArray(data)) {
+    sourceStats.supabase += 1;
+    return data.map(normalizeRow);
+  }
+  console.warn(`Supabase optional table load failed for ${table}`, error);
+  return [];
+}
+
 function normalizeRow(row) {
   const out = {};
   for (const [k, v] of Object.entries(row)) out[k] = v == null ? '' : String(v);
@@ -424,7 +436,7 @@ function cumulativeByDate(rows) {
 }
 
 async function main() {
-  const [daily, income, expenses, projects, targets, habits, blocks, voices, sleepLog, platformDaily, expenseTags] = await Promise.all([
+  const [daily, income, expenses, projects, targets, habits, blocks, voices, sleepLog, platformDaily, expenseTags, latestSummaryRows] = await Promise.all([
     loadSupabaseOrCSV('daily_logs', '../logs/daily_log.csv'),
     loadSupabaseOrCSV('income_logs', '../logs/income.csv'),
     loadSupabaseOrCSV('expense_logs', '../logs/expenses.csv'),
@@ -435,7 +447,8 @@ async function main() {
     loadSupabaseOrCSV('voice_journal', '../logs/voice_journal.csv'),
     loadSupabaseOrCSV('sleep_log', '../logs/sleep_log.csv'),
     loadSupabaseOrCSV('platform_message_daily', '../logs/platform_message_daily.csv'),
-    loadSupabaseOrCSV('expense_tags', '../logs/expense_tags.csv')
+    loadSupabaseOrCSV('expense_tags', '../logs/expense_tags.csv'),
+    loadSupabaseOptional('life_os_latest_summary')
   ]);
 
   const d7 = lastNDays(daily, 7);
@@ -502,6 +515,12 @@ async function main() {
   const dbCoverage = totalReads > 0 ? Math.round((sourceStats.supabase / totalReads) * 100) : 0;
   coverageBadge.textContent = `db coverage: ${dbCoverage}%`;
   coverageBadge.className = `pill ${dbCoverage >= 90 ? 'ok' : dbCoverage >= 70 ? '' : 'off'}`;
+
+  const syncLagBadge = document.getElementById('syncLagBadge');
+  const summaryGeneratedAt = latestSummaryRows?.[0]?.generated_at || '';
+  const syncLagDays = summaryGeneratedAt ? daysStale(summaryGeneratedAt) : null;
+  syncLagBadge.textContent = syncLagDays == null ? 'supabase sync lag: unknown' : `supabase sync lag: ${syncLagDays}d`;
+  syncLagBadge.className = `pill ${syncLagDays == null ? '' : syncLagDays <= 1 ? 'ok' : syncLagDays <= 3 ? '' : 'off'}`;
 
   const dataQualityScore = Math.max(0, 100 - (sourceStats.csv * 8) - ((staleDays || 0) * 10));
   const dqState = dataQualityScore >= 80 ? 'high confidence' : dataQualityScore >= 55 ? 'moderate confidence' : 'low confidence';
