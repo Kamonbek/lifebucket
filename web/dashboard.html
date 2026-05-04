@@ -214,6 +214,12 @@
       </div>
 
       <div class="card mid">
+        <h3 class="section-title">Expense Concentration (7d)</h3>
+        <canvas id="expenseCategoryChart" height="180"></canvas>
+        <div class="note" id="expenseCategorySummary">Top spend categories: --</div>
+      </div>
+
+      <div class="card mid">
         <h3 class="section-title">What I learned about you today</h3>
         <table>
           <thead><tr><th>Insight</th><th>Signal</th></tr></thead>
@@ -796,6 +802,42 @@ async function main() {
     nwSummary.textContent = `Date ${latestSpendDate}: Needs ${needsTotal.toLocaleString()} (${needsPct.toFixed(1)}%) • Wants ${wantsTotal.toLocaleString()} (${wantsPct.toFixed(1)}%)`;
   } else {
     nwSummary.textContent = 'No tagged spend rows yet.';
+  }
+
+  const exp7 = lastNDays(expenses, 7).filter(r => (r.currency || 'UZS').toUpperCase() === 'UZS');
+  const expByCategory = new Map();
+  exp7.forEach(r => {
+    const k = (r.category || 'other').toLowerCase();
+    expByCategory.set(k, (expByCategory.get(k) || 0) + num(r.amount));
+  });
+  const topExpenseRows = [...expByCategory.entries()]
+    .map(([category, amount]) => ({ category, amount }))
+    .sort((a,b) => b.amount - a.amount)
+    .slice(0, 5);
+  new Chart(document.getElementById('expenseCategoryChart'), {
+    type: 'bar',
+    data: {
+      labels: topExpenseRows.map(r => r.category),
+      datasets: [{
+        label: 'UZS spent (7d)',
+        data: topExpenseRows.map(r => r.amount),
+        backgroundColor: ['#60a5fa','#2dd4bf','#f97316','#a78bfa','#22c55e']
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      plugins:{legend:{labels:{color:'#dbe7ff'}}},
+      scales:{x:{ticks:{color:'#9fb0d6'}}, y:{ticks:{color:'#9fb0d6'}}}
+    }
+  });
+  const expenseCategorySummary = document.getElementById('expenseCategorySummary');
+  if (!topExpenseRows.length) {
+    expenseCategorySummary.textContent = 'No expense rows in last 7 days.';
+  } else {
+    const total7 = topExpenseRows.reduce((a, r) => a + r.amount, 0);
+    const top = topExpenseRows[0];
+    const share = total7 > 0 ? (top.amount / total7) * 100 : 0;
+    expenseCategorySummary.textContent = `Top category: ${top.category} ${fmtUZS(top.amount)} • concentration ${share.toFixed(1)}% of tracked top-5 spend`;
   }
 
   const insights = [];
