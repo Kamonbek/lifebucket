@@ -166,6 +166,12 @@
         <div class="badge" id="kpiMomentumBadge">--</div>
       </div>
 
+      <div class="card kpi">
+        <div class="kpi-title">Recovery Risk</div>
+        <div class="kpi-value" id="kpiRecoveryRisk">--</div>
+        <div class="badge" id="kpiRecoveryRiskBadge">--</div>
+      </div>
+
       <div class="card wide">
         <h3 class="section-title">Goal Progress Bars</h3>
         <div id="progressBars"></div>
@@ -884,6 +890,23 @@ async function main() {
   momentumBadge.textContent = `${momentumState} • deep ${deepDelta >= 0 ? '+' : ''}${deepDelta.toFixed(2)}h • learn ${learnDelta >= 0 ? '+' : ''}${learnDelta.toFixed(2)}h`;
   momentumBadge.className = `badge ${momentumScore >= 15 ? 'good' : momentumScore <= -15 ? 'bad' : 'warn'}`;
 
+  const recoveryRiskParts = [];
+  if (sleepConsistency == null) recoveryRiskParts.push(35);
+  else if (sleepConsistency < 0.5) recoveryRiskParts.push(50);
+  else if (sleepConsistency < 0.8) recoveryRiskParts.push(25);
+  if (voiceStaleDays == null) recoveryRiskParts.push(20);
+  else if (voiceStaleDays > 14) recoveryRiskParts.push(35);
+  else if (voiceStaleDays > 7) recoveryRiskParts.push(20);
+  if (avgEnergy < 5) recoveryRiskParts.push(25);
+  else if (avgEnergy < 7) recoveryRiskParts.push(10);
+  const recoveryRisk = Math.min(100, recoveryRiskParts.reduce((a,b)=>a+b,0));
+  const recoveryRiskEl = document.getElementById('kpiRecoveryRisk');
+  const recoveryRiskBadge = document.getElementById('kpiRecoveryRiskBadge');
+  recoveryRiskEl.textContent = `${recoveryRisk}/100`;
+  const recoveryState = recoveryRisk >= 60 ? 'recovery debt risk' : recoveryRisk >= 35 ? 'watch recovery loop' : 'recovery stable';
+  recoveryRiskBadge.textContent = `${recoveryState} • sleep ${sleepConsistency == null ? 'n/a' : `${Math.round(sleepConsistency*100)}%`} • voice stale ${voiceStaleDays == null ? 'n/a' : `${voiceStaleDays}d`}`;
+  recoveryRiskBadge.className = `badge ${recoveryRisk >= 60 ? 'bad' : recoveryRisk >= 35 ? 'warn' : 'good'}`;
+
   const alerts = [];
   if (avgDeep < 2.5) alerts.push(['Deep work below 2.5h/day (7d avg)', 'high']);
   if (mainDone < 0.7) alerts.push(['Main task completion below 70% (7d)', 'high']);
@@ -891,6 +914,7 @@ async function main() {
   if (projects.filter(p => (p.status||'').toLowerCase() === 'active').length > 3) alerts.push(['Too many active projects (>3)', 'medium']);
   if (voice7 === 0) alerts.push(['No voice-journal entries in last 7 days', 'low']);
   if (voiceStaleDays != null && voiceStaleDays > 14) alerts.push([`Voice journaling stale (${voiceStaleDays} days since last entry)`, 'medium']);
+  if (recoveryRisk >= 60) alerts.push([`Recovery risk elevated (${recoveryRisk}/100): sleep consistency + journaling cadence + energy`, 'high']);
   if (staleDays != null && staleDays > 2) alerts.push([`Daily log appears stale (${staleDays} days old)`, 'high']);
 
   const immediateAction = document.getElementById('immediateAction');
