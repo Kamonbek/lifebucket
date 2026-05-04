@@ -99,7 +99,7 @@ def main():
                     values (%s,%s,%s,%s,%s)
                     on conflict(date, source, amount, currency, note) do nothing
                     ''',
-                    (r.get('date'), r.get('source') or 'other', n(r.get('amount','')) or 0, r.get('currency') or 'USD', none_if_blank(r.get('note','')))
+                    (r.get('date'), r.get('source') or 'other', n(r.get('amount','')) or 0, r.get('currency') or 'UZS', none_if_blank(r.get('note','')))
                 )
 
             for r in read_csv(LOGS / 'expenses.csv'):
@@ -109,7 +109,26 @@ def main():
                     values (%s,%s,%s,%s,%s)
                     on conflict(date, category, amount, currency, note) do nothing
                     ''',
-                    (r.get('date'), r.get('category') or 'other', n(r.get('amount','')) or 0, r.get('currency') or 'USD', none_if_blank(r.get('note','')))
+                    (r.get('date'), r.get('category') or 'other', n(r.get('amount','')) or 0, r.get('currency') or 'UZS', none_if_blank(r.get('note','')))
+                )
+
+            for r in read_csv(LOGS / 'expense_tags.csv'):
+                cur.execute(
+                    '''
+                    insert into expense_tags(date,category,amount,currency,note,need_want,confidence,rule)
+                    values (%s,%s,%s,%s,%s,%s,%s,%s)
+                    on conflict(date, category, amount, currency, note, need_want, confidence, rule) do nothing
+                    ''',
+                    (
+                        r.get('date'),
+                        none_if_blank(r.get('category','')),
+                        n(r.get('amount','')),
+                        none_if_blank(r.get('currency','')),
+                        none_if_blank(r.get('note','')),
+                        none_if_blank(r.get('need_want','')),
+                        none_if_blank(r.get('confidence','')),
+                        none_if_blank(r.get('rule','')),
+                    )
                 )
 
             for r in read_csv(LOGS / 'projects.csv'):
@@ -390,10 +409,20 @@ def main():
                     )
                 )
 
+            core_tables = [
+                'daily_logs', 'income_logs', 'expense_logs', 'projects',
+                'habits', 'time_blocks', 'outcomes', 'voice_journal'
+            ]
+            row_counts = {}
+            for t in core_tables:
+                cur.execute(f'select count(*) from {t}')
+                row_counts[t] = cur.fetchone()[0]
+
             cur.execute('select * from life_os_latest_summary')
             row = cur.fetchone()
             cols = [d.name for d in cur.description]
-            print(dict(zip(cols, row)))
+            summary = dict(zip(cols, row))
+            print({'row_counts': row_counts, 'summary': summary})
 
         conn.commit()
 

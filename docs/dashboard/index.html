@@ -234,6 +234,15 @@
         <div class="note" id="insightConfidence">Confidence: --</div>
       </div>
 
+      <div class="card mid">
+        <h3 class="section-title">Data Confidence Matrix</h3>
+        <table>
+          <thead><tr><th>Pipeline Slice</th><th>Status</th></tr></thead>
+          <tbody id="confidenceMatrixTable"></tbody>
+        </table>
+        <div class="note">Supabase-first analytics with CSV fallback visibility.</div>
+      </div>
+
       <div class="card full">
         <h3 class="section-title">Alerts & Risks</h3>
         <table>
@@ -877,6 +886,20 @@ async function main() {
   }
   const insightConfidence = confidenceLabel(dailySorted.length, sourceStats.csv);
   document.getElementById('insightConfidence').textContent = `Confidence: ${insightConfidence} (daily_rows=${dailySorted.length}, csv_fallback_tables=${sourceStats.csv})`;
+
+  const confidenceRows = [
+    ['Execution logs', confidenceLabel(dailySorted.length, sourceStats.csv)],
+    ['Finance rows (30d)', confidenceLabel(inc30.length + exp30rows.length, sourceStats.csv)],
+    ['Voice journal cadence', confidenceLabel(voiceRows.length, sourceStats.csv)],
+    ['Telemetry platform mix', confidenceLabel(platformRows.length, sourceStats.csv)],
+    ['Sleep consistency sample', confidenceLabel(sleepRows.length, sourceStats.csv)]
+  ];
+  const cmt = document.getElementById('confidenceMatrixTable');
+  for (const [slice, status] of confidenceRows) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${slice}</td><td><span class="pill ${status === 'high' ? 'ok' : status === 'medium' ? '' : 'off'}">${status}</span></td>`;
+    cmt.appendChild(tr);
+  }
 
   const momentumScore = Math.max(-100, Math.min(100,
     (deepDelta * 25) +
