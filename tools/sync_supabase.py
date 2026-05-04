@@ -3,8 +3,14 @@ import csv
 import os
 from pathlib import Path
 
-import psycopg
 from urllib.parse import quote
+
+try:
+    import psycopg
+except ModuleNotFoundError as e:
+    raise SystemExit(
+        "Missing dependency: psycopg. Run with: uv run --with 'psycopg[binary]' python tools/sync_supabase.py"
+    ) from e
 
 BASE = Path('/workspace/life-os')
 LOGS = BASE / 'logs'
