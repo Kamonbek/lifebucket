@@ -615,7 +615,11 @@ async function main() {
   const avgVoiceLen = voiceRows7.length
     ? mean(voiceRows7.map(v => (v.transcript || '').trim().length).filter(x => Number.isFinite(x)))
     : 0;
-  voiceBadge.textContent = voice7 > 0 ? `journal active • avg ${Math.round(avgVoiceLen)} chars` : 'no entries this week';
+  const voiceMinutes7 = voiceRows7.reduce((acc, r) => acc + num(r.duration_sec), 0) / 60;
+  const voiceDaysCovered7 = new Set(voiceRows7.map(r => day(r.created_at_utc || r.journal_date || '')).filter(Boolean)).size;
+  voiceBadge.textContent = voice7 > 0
+    ? `journal active • ${voiceMinutes7.toFixed(1)} min/7d • ${voiceDaysCovered7} active days • avg ${Math.round(avgVoiceLen)} chars`
+    : 'no entries this week';
   voiceBadge.className = `badge ${voice7 > 0 ? 'good' : 'warn'}`;
 
   const voiceRecencyEl = document.getElementById('kpiVoiceRecency');
