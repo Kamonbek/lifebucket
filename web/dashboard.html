@@ -249,6 +249,15 @@
         <div class="note">Supabase-first analytics with CSV fallback visibility.</div>
       </div>
 
+      <div class="card mid">
+        <h3 class="section-title">Freshness & Sync Watch</h3>
+        <table>
+          <thead><tr><th>Dataset</th><th>Freshness</th></tr></thead>
+          <tbody id="freshnessTable"></tbody>
+        </table>
+        <div class="note" id="summaryGuardrail">Summary view: --</div>
+      </div>
+
       <div class="card full">
         <h3 class="section-title">Alerts & Risks</h3>
         <table>
@@ -924,6 +933,29 @@ async function main() {
     const tr = document.createElement('tr');
     tr.innerHTML = `<td>${slice}</td><td><span class="pill ${status === 'high' ? 'ok' : status === 'medium' ? '' : 'off'}">${status}</span></td>`;
     cmt.appendChild(tr);
+  }
+
+  const freshnessRows = [
+    ['Daily logs', staleDays == null ? 'unknown' : `${staleDays}d old`],
+    ['Voice journal', voiceStaleDays == null ? 'no entries yet' : `${voiceStaleDays}d since latest`],
+    ['Sleep log', sleepRows.length ? `${Math.max(0, Math.floor((Date.now() - new Date(sleepRows[sleepRows.length - 1].date_local).getTime()) / 86400000))}d old` : 'no rows'],
+    ['Platform telemetry', platformRows.length ? `${Math.max(0, Math.floor((Date.now() - new Date(platformRows[platformRows.length - 1].date_local).getTime()) / 86400000))}d old` : 'no rows'],
+    ['Expense tags', expenseTags.length ? `${Math.max(0, Math.floor((Date.now() - new Date(expenseTags[expenseTags.length - 1].date).getTime()) / 86400000))}d old` : 'no rows']
+  ];
+  const freshnessTable = document.getElementById('freshnessTable');
+  for (const [dataset, freshness] of freshnessRows) {
+    const tr = document.createElement('tr');
+    const staleN = parseInt(String(freshness), 10);
+    const level = freshness.includes('no ') || freshness.includes('unknown') ? 'off' : (Number.isFinite(staleN) && staleN <= 1 ? 'ok' : (Number.isFinite(staleN) && staleN <= 3 ? '' : 'off'));
+    tr.innerHTML = `<td>${dataset}</td><td><span class="pill ${level}">${freshness}</span></td>`;
+    freshnessTable.appendChild(tr);
+  }
+  const summaryGuardrail = document.getElementById('summaryGuardrail');
+  if (latestSummaryRows.length) {
+    const s = latestSummaryRows[0];
+    summaryGuardrail.textContent = `Summary view healthy • active_projects=${s.active_projects ?? '--'} • voice_entries_7d=${s.voice_entries_7d ?? '--'}`;
+  } else {
+    summaryGuardrail.textContent = 'Summary view unavailable from Supabase (optional route); core KPIs still computed from primary tables.';
   }
 
   const momentumScore = Math.max(-100, Math.min(100,
