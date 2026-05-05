@@ -172,6 +172,12 @@
         <div class="badge" id="kpiRecoveryRiskBadge">--</div>
       </div>
 
+      <div class="card kpi">
+        <div class="kpi-title">Expense Tag Coverage (7d)</div>
+        <div class="kpi-value" id="kpiTagCoverage">--</div>
+        <div class="badge" id="kpiTagCoverageBadge">--</div>
+      </div>
+
       <div class="card wide">
         <h3 class="section-title">Goal Progress Bars</h3>
         <div id="progressBars"></div>
@@ -854,6 +860,24 @@ async function main() {
     const top = topExpenseRows[0];
     const share = total7 > 0 ? (top.amount / total7) * 100 : 0;
     expenseCategorySummary.textContent = `Top category: ${top.category} ${fmtUZS(top.amount)} • concentration ${share.toFixed(1)}% of tracked top-5 spend`;
+  }
+
+  const expenseTotal7 = exp7.reduce((a, r) => a + num(r.amount), 0);
+  const taggedAmount7 = lastNDays(expenseTags, 7)
+    .filter(r => (r.currency || 'UZS').toUpperCase() === 'UZS')
+    .reduce((a, r) => a + num(r.amount), 0);
+  const coverageRatio = expenseTotal7 > 0 ? (taggedAmount7 / expenseTotal7) : null;
+  const tagCoverageEl = document.getElementById('kpiTagCoverage');
+  const tagCoverageBadge = document.getElementById('kpiTagCoverageBadge');
+  if (coverageRatio == null) {
+    tagCoverageEl.textContent = '--';
+    tagCoverageBadge.textContent = 'no 7d UZS expense rows';
+    tagCoverageBadge.className = 'badge warn';
+  } else {
+    tagCoverageEl.textContent = `${Math.round(coverageRatio * 100)}%`;
+    const untaggedAmount7 = Math.max(0, expenseTotal7 - taggedAmount7);
+    tagCoverageBadge.textContent = `${fmtUZS(taggedAmount7)} tagged • ${fmtUZS(untaggedAmount7)} untagged`;
+    tagCoverageBadge.className = `badge ${coverageRatio >= 0.9 ? 'good' : coverageRatio >= 0.7 ? 'warn' : 'bad'}`;
   }
 
   const insights = [];
