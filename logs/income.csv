@@ -1,2 +1,3 @@
 date,source,amount,currency,note
-2026-04-28,consulting,150.00,USD,client milestone payout
+2026-05-01,monthly_salary,4000000,UZS,User reported monthly salary (cash component)
+2026-05-01,monthly_salary,500,USD,User reported monthly salary (USD component; keep labeled for FX conversion in analytics)

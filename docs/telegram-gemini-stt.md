@@ -9,22 +9,25 @@ Script:
 
 ## Recommended model
 Default is:
-- `gemini-2.5-flash`
+- `gemini-3-flash`
 
-Why: good transcription quality/cost/latency balance for daily voice notes.
+Why: faster, newer Gemini Flash generation for daily voice-note transcription.
 
 You can override with env:
-- `GEMINI_STT_MODEL=gemini-2.5-flash`
+- `GEMINI_STT_MODEL=gemini-3-flash`
 
 ## Required env vars
-- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_STT_BOT_TOKEN` (recommended: dedicated bot token)
 - `GEMINI_API_KEY` (or `GOOGLE_API_KEY`)
+
+Optional compatibility override:
+- `TELEGRAM_STT_ALLOW_SHARED_TOKEN=1` to reuse `TELEGRAM_BOT_TOKEN` (not recommended; may conflict with Hermes gateway polling)
 
 ## Run
 
 ```bash
 cd /workspace/life-os
-TELEGRAM_BOT_TOKEN=... GEMINI_API_KEY=... python3 tools/telegram_gemini_stt_ingest.py
+TELEGRAM_STT_BOT_TOKEN=... GEMINI_API_KEY=... python3 tools/telegram_gemini_stt_ingest.py
 ```
 
 Optional:

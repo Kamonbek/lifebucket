@@ -4,33 +4,70 @@ import csv
 import json
 import mimetypes
 import os
+import re
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
+from zoneinfo import ZoneInfo
 
 BASE = Path('/workspace/life-os')
 LOGS = BASE / 'logs'
 OUT_CSV = LOGS / 'voice_journal.csv'
+EVENTS_CSV = LOGS / 'chat_events.csv'
+NUMERIC_CSV = LOGS / 'numeric_facts.csv'
 STATE_FILE = BASE / '.state' / 'telegram_offset.txt'
 
-TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '').strip()
+LOCAL_TZ = ZoneInfo(os.getenv('LIFE_OS_TIMEZONE', 'Asia/Tashkent'))
+UTC_OFFSET = os.getenv('LIFE_OS_UTC_OFFSET', '+05:00')
+
+TELEGRAM_STT_BOT_TOKEN = os.getenv('TELEGRAM_STT_BOT_TOKEN', '').strip()
+TELEGRAM_STT_ALLOW_SHARED_TOKEN = os.getenv('TELEGRAM_STT_ALLOW_SHARED_TOKEN', '').strip().lower() in {
+    '1', 'true', 'yes', 'on'
+}
+TELEGRAM_BOT_TOKEN = TELEGRAM_STT_BOT_TOKEN
+if not TELEGRAM_BOT_TOKEN and TELEGRAM_STT_ALLOW_SHARED_TOKEN:
+    TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '').strip()
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', os.getenv('GOOGLE_API_KEY', '')).strip()
-GEMINI_MODEL = os.getenv('GEMINI_STT_MODEL', 'gemini-2.5-flash').strip()
+GEMINI_MODEL = os.getenv('GEMINI_STT_MODEL', 'gemini-3-flash').strip()
 POLL_SECONDS = int(os.getenv('TELEGRAM_POLL_SECONDS', '2'))
+
+TIME_RE = re.compile(r'\b([01]?\d|2[0-3])[:.]([0-5]\d)(?:[:.]([0-5]\d))?\b')
+NUMBER_RE = re.compile(r'(?<!\w)(\d+(?:[.,]\d+)?)(?!\w)')
+SLEEP_HINT_RE = re.compile(r'\b(sleep|sleeping|go to sleep|bed|good night)\b', re.I)
+WAKE_HINT_RE = re.compile(r'\b(wake|woke|wakeup|wake up|alarm)\b', re.I)
 
 
 def ensure_files():
     LOGS.mkdir(parents=True, exist_ok=True)
     STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+
     if not OUT_CSV.exists():
         with OUT_CSV.open('w', newline='', encoding='utf-8') as f:
             w = csv.writer(f)
             w.writerow([
                 'created_at_utc', 'chat_id', 'user_id', 'username', 'message_id', 'file_id',
                 'mime_type', 'duration_sec', 'gemini_model', 'transcript'
+            ])
+
+    if not EVENTS_CSV.exists():
+        with EVENTS_CSV.open('w', newline='', encoding='utf-8') as f:
+            w = csv.writer(f)
+            w.writerow([
+                'created_at_utc', 'event_local_date', 'event_local_datetime', 'timezone', 'utc_offset',
+                'chat_id', 'user_id', 'username', 'message_id', 'message_type', 'has_text',
+                'has_voice', 'has_audio', 'text_len', 'duration_sec'
+            ])
+
+    if not NUMERIC_CSV.exists():
+        with NUMERIC_CSV.open('w', newline='', encoding='utf-8') as f:
+            w = csv.writer(f)
+            w.writerow([
+                'created_at_utc', 'event_local_date', 'event_local_datetime', 'timezone',
+                'chat_id', 'user_id', 'username', 'message_id', 'source_type',
+                'fact_key', 'fact_value', 'fact_unit', 'confidence', 'evidence'
             ])
 
 
@@ -85,7 +122,7 @@ def transcribe_with_gemini(audio_bytes: bytes, mime_type: str) -> str:
     b64 = base64.b64encode(audio_bytes).decode('ascii')
     url = f'https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}'
     prompt = (
-        'You are a transcription engine. Transcribe this audio faithfully. '\
+        'You are a transcription engine. Transcribe this audio faithfully. '
         'Return only plain text transcript. Keep original language. No summaries.'
     )
     payload = {
@@ -108,8 +145,8 @@ def transcribe_with_gemini(audio_bytes: bytes, mime_type: str) -> str:
         raise RuntimeError(f'Gemini response parse failed: {json.dumps(r)[:800]}')
 
 
-def append_row(row: list[str]):
-    with OUT_CSV.open('a', newline='', encoding='utf-8') as f:
+def append_row(path: Path, row: list[str]):
+    with path.open('a', newline='', encoding='utf-8') as f:
         csv.writer(f).writerow(row)
 
 
@@ -128,15 +165,69 @@ def pick_audio(msg: dict):
     return None, None, 0
 
 
+def get_text_payload(msg: dict) -> str:
+    text = msg.get('text') or msg.get('caption') or ''
+    return text.strip()
+
+
+def classify_message(msg: dict) -> str:
+    if 'voice' in msg:
+        return 'voice'
+    if 'audio' in msg:
+        return 'audio'
+    if msg.get('text'):
+        return 'text'
+    return 'other'
+
+
+def event_local_dt(msg: dict) -> datetime:
+    ts = msg.get('date')
+    if isinstance(ts, int):
+        return datetime.fromtimestamp(ts, tz=timezone.utc).astimezone(LOCAL_TZ)
+    return datetime.now(timezone.utc).astimezone(LOCAL_TZ)
+
+
+def extract_numeric_facts(text: str):
+    facts = []
+    if not text:
+        return facts
+
+    times = []
+    for m in TIME_RE.finditer(text):
+        hh = m.group(1).zfill(2)
+        mm = m.group(2)
+        ss = m.group(3) or '00'
+        val = f'{hh}:{mm}:{ss}'
+        times.append((val, m.group(0)))
+        facts.append(('time_mentioned', val, 'local_time', 'medium', m.group(0)))
+
+    for m in NUMBER_RE.finditer(text):
+        num = m.group(1).replace(',', '.')
+        facts.append(('number_mentioned', num, 'raw_number', 'low', m.group(0)))
+
+    low = text.lower()
+    if times and SLEEP_HINT_RE.search(low):
+        facts.append(('sleep_time_candidate', times[0][0], 'local_time', 'medium', times[0][1]))
+    if times and WAKE_HINT_RE.search(low):
+        facts.append(('wake_time_candidate', times[0][0], 'local_time', 'medium', times[0][1]))
+
+    return facts
+
+
 def main():
     if not TELEGRAM_BOT_TOKEN:
-        raise SystemExit('TELEGRAM_BOT_TOKEN is not set')
+        raise SystemExit(
+            'TELEGRAM_STT_BOT_TOKEN is not set. '
+            'For safety, this ingester no longer defaults to TELEGRAM_BOT_TOKEN. '
+            'Set TELEGRAM_STT_BOT_TOKEN to a dedicated bot token, or explicitly set '
+            'TELEGRAM_STT_ALLOW_SHARED_TOKEN=1 to reuse TELEGRAM_BOT_TOKEN.'
+        )
     if not GEMINI_API_KEY:
         raise SystemExit('GEMINI_API_KEY (or GOOGLE_API_KEY) is not set')
 
     ensure_files()
     offset = load_offset()
-    print(f'[start] polling telegram with model={GEMINI_MODEL} offset={offset}')
+    print(f'[start] polling telegram with model={GEMINI_MODEL} offset={offset} tz={LOCAL_TZ.key}')
 
     backoff = POLL_SECONDS
     while True:
@@ -145,9 +236,8 @@ def main():
             backoff = POLL_SECONDS
         except HTTPError as e:
             if e.code == 409:
-                # Another poller is currently consuming this bot token.
                 backoff = min(max(backoff * 2, POLL_SECONDS), 60)
-                print(f'[warn] Telegram polling conflict (HTTP 409). Another consumer may be running. Retrying in {backoff}s.')
+                print(f'[warn] Telegram polling conflict (HTTP 409). Retrying in {backoff}s.')
                 time.sleep(backoff)
                 continue
             backoff = min(max(backoff * 2, POLL_SECONDS), 60)
@@ -176,24 +266,75 @@ def main():
             chat = msg.get('chat') or {}
             frm = msg.get('from') or {}
 
-            file_id, hinted_mime, duration = pick_audio(msg)
-            if not file_id:
-                continue
-
             chat_id = chat.get('id')
             user_id = frm.get('id')
             username = frm.get('username') or frm.get('first_name') or 'unknown'
             message_id = msg.get('message_id')
+            mtype = classify_message(msg)
+            text_payload = get_text_payload(msg)
+            local_dt = event_local_dt(msg)
+            created_at = datetime.now(timezone.utc).isoformat()
+
+            file_id, hinted_mime, duration = pick_audio(msg)
+
+            append_row(EVENTS_CSV, [
+                created_at,
+                local_dt.strftime('%Y-%m-%d'),
+                local_dt.strftime('%Y-%m-%d %H:%M:%S'),
+                LOCAL_TZ.key,
+                UTC_OFFSET,
+                str(chat_id),
+                str(user_id),
+                username,
+                str(message_id),
+                mtype,
+                '1' if bool(text_payload) else '0',
+                '1' if 'voice' in msg else '0',
+                '1' if 'audio' in msg else '0',
+                str(len(text_payload)),
+                str(duration),
+            ])
+
+            if text_payload:
+                for fk, fv, fu, conf, ev in extract_numeric_facts(text_payload):
+                    append_row(NUMERIC_CSV, [
+                        created_at,
+                        local_dt.strftime('%Y-%m-%d'),
+                        local_dt.strftime('%Y-%m-%d %H:%M:%S'),
+                        LOCAL_TZ.key,
+                        str(chat_id),
+                        str(user_id),
+                        username,
+                        str(message_id),
+                        'text', fk, fv, fu, conf, ev
+                    ])
+
+            if not file_id:
+                continue
 
             try:
                 audio_bytes, detected_mime = get_file_bytes(file_id)
                 mime = hinted_mime or detected_mime
                 transcript = transcribe_with_gemini(audio_bytes, mime)
-                created_at = datetime.now(timezone.utc).isoformat()
-                append_row([
+
+                append_row(OUT_CSV, [
                     created_at, str(chat_id), str(user_id), username, str(message_id), file_id,
                     mime, str(duration), GEMINI_MODEL, transcript
                 ])
+
+                for fk, fv, fu, conf, ev in extract_numeric_facts(transcript):
+                    append_row(NUMERIC_CSV, [
+                        created_at,
+                        local_dt.strftime('%Y-%m-%d'),
+                        local_dt.strftime('%Y-%m-%d %H:%M:%S'),
+                        LOCAL_TZ.key,
+                        str(chat_id),
+                        str(user_id),
+                        username,
+                        str(message_id),
+                        'voice_transcript', fk, fv, fu, conf, ev
+                    ])
+
                 preview = (transcript[:700] + '…') if len(transcript) > 700 else transcript
                 telegram_send(chat_id, f'Transcript saved.\n\n{preview}')
                 print(f'[ok] {created_at} chat={chat_id} user={username} msg={message_id} chars={len(transcript)}')

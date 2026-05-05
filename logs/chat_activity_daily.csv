@@ -1,0 +1,2 @@
+date_local,timezone,utc_offset,total_messages,voice_messages,text_messages,other_messages,count_confidence,notes
+2026-04-29,Asia/Tashkent,+05:00,2,0,2,0,high,Computed from chat_events.csv

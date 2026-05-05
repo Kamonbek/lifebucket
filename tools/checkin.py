@@ -30,7 +30,7 @@ def main():
     p.add_argument('--income-source', default='')
     p.add_argument('--expense', type=float, default=0)
     p.add_argument('--expense-category', default='')
-    p.add_argument('--currency', default='USD')
+    p.add_argument('--currency', default='UZS')
     args = p.parse_args()
 
     append_row(

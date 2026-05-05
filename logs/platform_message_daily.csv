@@ -1,0 +1,6 @@
+date_local,platform,timezone,utc_offset,total_messages,voice_messages,text_messages,other_messages,count_confidence,notes
+2026-04-29,cli,Asia/Tashkent,+05:00,188,0,188,0,medium,Exact message counts; date inferred from session timestamp for non-JSONL sessions.
+2026-04-29,telegram,Asia/Tashkent,+05:00,69,40,29,0,medium,Exact message counts; date inferred from session timestamp for non-JSONL sessions.
+2026-04-30,telegram,Asia/Tashkent,+05:00,153,70,83,0,medium,Exact message counts; date inferred from session timestamp for non-JSONL sessions.
+2026-05-01,telegram,Asia/Tashkent,+05:00,1,0,1,0,high,Exact from JSONL per-message timestamps.
+2026-05-03,telegram,Asia/Tashkent,+05:00,2,0,2,0,high,Exact from JSONL per-message timestamps.
