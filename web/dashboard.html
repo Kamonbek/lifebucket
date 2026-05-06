@@ -273,6 +273,7 @@
         </table>
         <div class="note">Severity legend: High = immediate correction today • Medium = monitor daily • Low = watch weekly</div>
         <div class="note" id="immediateAction">Immediate action: --</div>
+        <div class="note" id="topBlocker">Top blocker: --</div>
         <div class="note" id="dailyVerdict">Verdict: --</div>
       </div>
     </div>
@@ -1026,14 +1027,19 @@ async function main() {
   const topHigh = alerts.find(([, sev]) => sev === 'high');
   const topMed = alerts.find(([, sev]) => sev === 'medium');
   const topLow = alerts.find(([, sev]) => sev === 'low');
+  const topBlockerEl = document.getElementById('topBlocker');
   if (topHigh) {
     immediateAction.textContent = `Immediate action: fix high-severity risk first → ${topHigh[0]}`;
+    topBlockerEl.textContent = `Top blocker: ${topHigh[0]} (severity: high)`;
   } else if (topMed) {
     immediateAction.textContent = `Immediate action: handle medium risk next → ${topMed[0]}`;
+    topBlockerEl.textContent = `Top blocker: ${topMed[0]} (severity: medium)`;
   } else if (topLow) {
     immediateAction.textContent = `Immediate action: optional quality boost → ${topLow[0]}`;
+    topBlockerEl.textContent = `Top blocker: ${topLow[0]} (severity: low)`;
   } else {
     immediateAction.textContent = 'Immediate action: keep momentum; no major risk detected.';
+    topBlockerEl.textContent = 'Top blocker: none';
   }
 
   const highAlerts = alerts.filter(([, sev]) => sev === 'high').length;

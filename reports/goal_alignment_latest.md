@@ -1,55 +1,39 @@
 # Goal Alignment Audit
 
-Date: 2026-05-05
+- Generated: 2026-05-06 08:46:49
 
 ## Goal Alignment Score (0-100)
-**Overall: 71.1/100**
-
-- **Academics**: 70.0/100 _(confidence: low)_
-- **Career/Income**: 100.0/100 _(confidence: medium)_
-- **Startup Progress**: 100/100 _(confidence: low)_
-- **Health/Sleep**: 50.0/100 _(confidence: low)_
-- **Execution Consistency**: 35.7/100 _(confidence: medium)_
-
-### Confidence basis
-- daily_log: 1 total row(s), latest 2026-04-28
-- sleep_log: 1 total row(s), latest 2026-04-29
-- platform_message_daily: 5 total row(s), latest 2026-05-03
-- income+expenses: 7 total row(s), latest 2026-05-01
+- **Overall: 29.2/100**
+- Academics: **10/100** (confidence: **low**; rows=1, latest_daily=2026-04-28)
+- Career/Income: **65/100** (confidence: **medium**; income_rows=2, expense_rows=5, latest_finance=2026-05-01)
+- Startup progress: **35/100** (confidence: **low**; project_rows=1, active_projects=1)
+- Health/Sleep: **20/100** (confidence: **low**; sleep_rows=1, daily_rows=1, latest_sleep=2026-04-29)
+- Execution consistency: **5/100** (confidence: **high**; daily_rows=1, platform_days=5, latest_activity=2026-05-03)
 
 ## On-track signals
-- 1 active project is defined (projects.csv), including 'Hermes Life OS' with high priority.
-- 30d recorded income includes $500 USD.
-- Expense logging is active: 5 expense rows in 30d, totaling 77,910 UZS.
-- Latest observed sleep duration is 6.43h (from sleep logs).
-- Communication telemetry is live: 5 platform-day rows in 7d, 413 total messages.
+- Income logged: **4,000,000 UZS + 500 USD** (income.csv rows=2).
+- Net UZS cashflow currently positive: **3,922,090 UZS** (income UZS 4,000,000 - expenses UZS 77,910).
+- Project pipeline exists: **1 active project** with **1 high-priority** (projects.csv).
+- Latest recorded execution day hit basics: **3.0h deep work, 1.0h learning, main_task_done=yes, exercise=yes** on 2026-04-28.
+- Communication cadence exists: **413 platform messages** logged across 5 day-platform entries (telegram=225).
 
 ## Off-track signals
-- 7d learning average is 1.00h/day (target 1.5h/day).
-- Latest sleep duration 6.43h is outside 7-9h range.
+- Data freshness gap: daily_log latest is **2026-04-28** (stale by **8 days**).
+- Sleep tracking is sparse: only **1 row** in sleep_log.csv; latest 2026-04-29 (stale **7 days**).
+- Voice journaling is missing: **0 entries** in voice_journal.csv.
+- Dashboard execution velocity is **0.0/100** and 7d deep_work/learning/main_task/exercise are all **0%** (reports/dashboard.md).
+- Quarterly salary target evidence incomplete: goal says **at least $1k stable salary**, while explicit logged USD salary is **$500** (separate 4,000,000 UZS logged without FX conversion).
 
 ## Priority correction
-### Next 24h (top 3 actions)
-1. Before 10:00 local: log one daily entry with at least 2.5h deep work block and 1.5h learning block pre-committed.
-1. Complete and mark one startup-critical main task today (main_task_done=yes) tied to current milestone.
-1. Set sleep tonight to deliver 7.5-8.5h and record it in sleep_log tomorrow morning.
+### Next 24h (top 3)
+- 1) Log **today** in daily_log.csv with at least **2.5h deep work + 1 main task completed** to restart execution evidence.
+- 2) Ship one startup milestone artifact for "Hermes Life OS" and update projects.csv `current_milestone`/`next_action` immediately after shipping.
+- 3) Record tonight sleep + tomorrow wake in sleep_log.csv (both timestamps) to rebuild health signal continuity.
 
-### Next 7d (top 3 actions)
-1. Publish 7 consecutive daily_log entries (0 missed days) to restore execution consistency evidence.
-1. Accumulate ≥17.5h deep work and ≥10.5h learning this week; verify via summed daily_log hours.
-1. Record weekly cashflow in one currency track (no FX mixing) and keep expenses <= income in that track.
+### Next 7d (top 3)
+- 1) Produce **7 consecutive daily_log rows** (no gaps) with non-zero deep_work_hours to raise academics + execution confidence from low to high.
+- 2) Convert income goal to measurable proof: log salary/payment events as they happen and add at least one work-output tied to compensation progression.
+- 3) Create **>=3 voice journal entries** capturing blockers, decisions, and next actions for university + startup priorities.
 
 ## Warning
-- ⚠️ You say growth and company-building are top priorities, but this week’s evidence is too thin (only 1 daily execution row, and it is 7 days old). That is a behavior-priority mismatch.
-- ⚠️ Sleep quality is currently conflicting with sustainable performance: latest observed sleep is 6.43h, below your 7–9h target band.
-
-## Data sources checked
-- `logs/daily_log.csv`: present
-- `logs/sleep_log.csv`: present
-- `logs/chat_activity_daily.csv`: present
-- `logs/platform_message_daily.csv`: present
-- `logs/voice_journal.csv`: present
-- `logs/income.csv`: present
-- `logs/expenses.csv`: present
-- `logs/projects.csv`: present
-- `reports/dashboard.md`: present
+Your stated priorities are university excellence + startup MVP for a stronger offer. Right now, your logs show **high communication volume but almost no recent execution evidence**. If this continues, you are not “slightly behind” — you are actively drifting away from your own declared goals. Reduce reactive messaging time and force daily proof of output.
