@@ -329,6 +329,7 @@ async function loadCSV(path) {
 
 const SUPABASE_URL = 'https://ypqqpoxgilugoppzvfrt.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_AfO624Te3XiPdORdVGBZIw_tWUSFGhJ';
+const DASHBOARD_BUILD_MARKER = 'insight-pass-2026-05-06a';
 const sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const sourceStats = { supabase: 0, csv: 0 };
@@ -540,7 +541,7 @@ async function main() {
     .at(-1);
   const staleDays = latestDailyDate ? daysStale(latestDailyDate) : null;
   const freshness = staleDays == null ? 'freshness unknown' : (staleDays <= 1 ? `fresh (D-${staleDays})` : `stale (${staleDays}d old)`);
-  document.getElementById('updatedAt').textContent = `Updated ${new Date().toLocaleString()} • latest daily_log=${latestDailyDate || 'n/a'} • ${freshness}`;
+  document.getElementById('updatedAt').textContent = `Updated ${new Date().toLocaleString()} • latest daily_log=${latestDailyDate || 'n/a'} • ${freshness} • build=${DASHBOARD_BUILD_MARKER}`;
   const srcMode = sourceStats.csv === 0 ? 'Supabase only' : (sourceStats.supabase > 0 ? 'Supabase + CSV fallback' : 'CSV fallback only');
   document.getElementById('dataSourceBadge').textContent = `Data source mode: ${srcMode}`;
   const freshnessBadge = document.getElementById('freshnessBadge');
