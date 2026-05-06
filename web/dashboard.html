@@ -126,6 +126,12 @@
       </div>
 
       <div class="card kpi">
+        <div class="kpi-title">Voice minutes (7d)</div>
+        <div class="kpi-value" id="kpiVoiceMinutes">--</div>
+        <div class="badge" id="kpiVoiceMinutesBadge">--</div>
+      </div>
+
+      <div class="card kpi">
         <div class="kpi-title">Voice recency</div>
         <div class="kpi-value" id="kpiVoiceRecency">--</div>
         <div class="badge" id="kpiVoiceRecencyBadge">--</div>
@@ -329,7 +335,7 @@ async function loadCSV(path) {
 
 const SUPABASE_URL = 'https://ypqqpoxgilugoppzvfrt.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_AfO624Te3XiPdORdVGBZIw_tWUSFGhJ';
-const DASHBOARD_BUILD_MARKER = 'insight-pass-2026-05-06a';
+const DASHBOARD_BUILD_MARKER = 'insight-pass-2026-05-06b';
 const sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const sourceStats = { supabase: 0, csv: 0 };
@@ -622,6 +628,18 @@ async function main() {
     ? `journal active • ${voiceMinutes7.toFixed(1)} min/7d • ${voiceDaysCovered7} active days • avg ${Math.round(avgVoiceLen)} chars`
     : 'no entries this week';
   voiceBadge.className = `badge ${voice7 > 0 ? 'good' : 'warn'}`;
+
+  const voiceMinutesEl = document.getElementById('kpiVoiceMinutes');
+  const voiceMinutesBadge = document.getElementById('kpiVoiceMinutesBadge');
+  voiceMinutesEl.textContent = `${voiceMinutes7.toFixed(1)}m`;
+  const voiceMinutesDaily = voiceMinutes7 / 7;
+  if (voiceMinutes7 === 0) {
+    voiceMinutesBadge.textContent = '0 min logged this week';
+    voiceMinutesBadge.className = 'badge warn';
+  } else {
+    voiceMinutesBadge.textContent = `${voiceMinutesDaily.toFixed(1)} min/day cadence`;
+    voiceMinutesBadge.className = `badge ${voiceMinutesDaily >= 3 ? 'good' : voiceMinutesDaily >= 1 ? 'warn' : 'bad'}`;
+  }
 
   const voiceRecencyEl = document.getElementById('kpiVoiceRecency');
   const voiceRecencyBadge = document.getElementById('kpiVoiceRecencyBadge');
