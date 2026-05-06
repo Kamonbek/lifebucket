@@ -273,6 +273,7 @@
         </table>
         <div class="note">Severity legend: High = immediate correction today • Medium = monitor daily • Low = watch weekly</div>
         <div class="note" id="immediateAction">Immediate action: --</div>
+        <div class="note" id="dailyVerdict">Verdict: --</div>
       </div>
     </div>
   </div>
@@ -1044,6 +1045,16 @@ async function main() {
   alertBadge.textContent = `${highAlerts} high • ${medAlerts} medium • ${lowAlerts} low`;
   alertBadge.className = `badge ${highAlerts > 0 ? 'bad' : medAlerts > 0 ? 'warn' : 'good'}`;
   riskB.textContent = `${riskLabel} • ${highAlerts} high alerts • ${medAlerts} medium`;
+
+  const verdictEl = document.getElementById('dailyVerdict');
+  const verdict = highAlerts > 0
+    ? 'Down: critical risks are active today.'
+    : (momentumScore >= 15 && recoveryRisk < 35)
+      ? 'Up: momentum and recovery are aligned.'
+      : (momentumScore <= -15 || recoveryRisk >= 60)
+        ? 'Drift: performance is unstable without correction.'
+        : 'Stable: maintain consistency and tighten weak spots.';
+  verdictEl.textContent = `Verdict: ${verdict}`;
 
   const at = document.getElementById('alertsTable');
   if (!alerts.length) {

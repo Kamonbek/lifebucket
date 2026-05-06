@@ -51,17 +51,28 @@ def normalize_created_at_utc(row):
 
 
 def normalize_pg_url(url):
-    """Return a psycopg-safe URL even when the password contains raw @/: chars."""
+    """Return a psycopg-safe URL even when user/password contain raw reserved chars."""
     if not (url.startswith('postgresql://') or url.startswith('postgres://')):
         return url
+
     scheme, rest = url.split('://', 1)
-    if '@' not in rest:
+    slash = rest.find('/')
+    if slash == -1:
+        authority, tail = rest, ''
+    else:
+        authority, tail = rest[:slash], rest[slash:]
+
+    if '@' not in authority or ':' not in authority:
         return url
-    creds, hostpart = rest.rsplit('@', 1)
+
+    creds, host = authority.rsplit('@', 1)
     if ':' not in creds:
         return url
+
     user, password = creds.split(':', 1)
-    return f"{scheme}://{quote(user, safe='')}:{quote(password, safe='')}@{hostpart}"
+    user_q = quote(user, safe='')
+    pass_q = quote(password, safe='')
+    return f"{scheme}://{user_q}:{pass_q}@{host}{tail}"
 
 
 def main():
