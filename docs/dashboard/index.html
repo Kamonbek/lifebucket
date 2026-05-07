@@ -95,6 +95,11 @@
         <div class="badge" id="kpiTrend">--</div>
       </div>
       <div class="card kpi">
+        <div class="kpi-title">Daily Log Coverage (7d)</div>
+        <div class="kpi-value" id="kpiLogCoverage">--</div>
+        <div class="badge" id="kpiLogCoverageBadge">--</div>
+      </div>
+      <div class="card kpi">
         <div class="kpi-title">30d Net Cashflow (UZS)</div>
         <div class="kpi-value" id="kpiNet">--</div>
         <div class="badge" id="kpiIncomeStatus">--</div>
@@ -337,7 +342,7 @@ async function loadCSV(path) {
 
 const SUPABASE_URL = 'https://ypqqpoxgilugoppzvfrt.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_AfO624Te3XiPdORdVGBZIw_tWUSFGhJ';
-const DASHBOARD_BUILD_MARKER = 'insight-pass-2026-05-06b';
+const DASHBOARD_BUILD_MARKER = 'insight-pass-2026-05-07a';
 const sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const sourceStats = { supabase: 0, csv: 0 };
@@ -578,6 +583,13 @@ async function main() {
   dqBadge.textContent = `${dqState} • fallback=${sourceStats.csv} • sync_lag=${syncLagDays == null ? 'unknown' : `${syncLagDays}d`}`;
   dqBadge.className = `badge ${dataQualityScore >= 80 ? 'good' : dataQualityScore >= 55 ? 'warn' : 'bad'}`;
   document.getElementById('kpiScore').textContent = score.toFixed(1);
+  const logCoverage7 = daily7.length;
+  const logCoverageRatio = logCoverage7 / 7;
+  document.getElementById('kpiLogCoverage').textContent = `${logCoverage7}/7`;
+  const logCoverageBadge = document.getElementById('kpiLogCoverageBadge');
+  const coverageState = logCoverageRatio >= 0.85 ? 'complete tracking' : logCoverageRatio >= 0.5 ? 'partial tracking' : 'insufficient tracking';
+  logCoverageBadge.textContent = `${coverageState} • ${Math.round(logCoverageRatio * 100)}% observed days`;
+  logCoverageBadge.className = `badge ${logCoverageRatio >= 0.85 ? 'good' : logCoverageRatio >= 0.5 ? 'warn' : 'bad'}`;
   const trendEl = document.getElementById('kpiTrend');
   trendEl.textContent = trend;
   trendEl.className = `badge ${trend==='improving'?'good':trend==='declining'?'bad':'warn'}`;
