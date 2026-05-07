@@ -209,8 +209,10 @@
           <button id="copyDailyRowBtn">Copy daily_log row</button>
           <button id="copyHabitRowBtn">Copy habits row</button>
           <button id="copyTimeBlockRowBtn">Copy time_blocks row</button>
+          <button id="copyCheckinCmdBtn">Copy one-command check-in</button>
         </div>
-        <div class="note">Marker: quick-log-nudge-v1</div>
+        <div class="note" id="nudgeFrictionScore">Friction score: --</div>
+        <div class="note">Marker: quick-log-nudge-v2</div>
       </div>
 
       <div class="card narrow">
@@ -519,14 +521,24 @@ function initQuickLogNudge(dailyRows) {
   const copyDaily = document.getElementById('copyDailyRowBtn');
   const copyHabit = document.getElementById('copyHabitRowBtn');
   const copyBlock = document.getElementById('copyTimeBlockRowBtn');
-  if (!prompt || !copyDaily || !copyHabit || !copyBlock) return;
+  const copyCmd = document.getElementById('copyCheckinCmdBtn');
+  const friction = document.getElementById('nudgeFrictionScore');
+  if (!prompt || !copyDaily || !copyHabit || !copyBlock || !copyCmd || !friction) return;
 
   const ds = new Date().toISOString().slice(0,10);
-  const yesterday = [...dailyRows].map(r => r.date).filter(Boolean).sort().at(-1) || 'none';
-  prompt.textContent = `If-then plan: If it's after dinner, then log 3 numbers in under 2 minutes. Last logged day: ${yesterday}.`;
+  const sortedDates = [...dailyRows].map(r => r.date).filter(Boolean).sort();
+  const lastLogged = sortedDates.at(-1) || null;
+  const daysSince = lastLogged ? daysStale(lastLogged) : 99;
+
+  const tinyStep = daysSince >= 3 ? 'Start with only deep_work_hours + energy (30 seconds).' : 'Log the full 3 numbers in under 2 minutes.';
+  prompt.textContent = `If-then plan: If it's after dinner, then run one quick check-in. ${tinyStep} Last logged day: ${lastLogged || 'none'}.`;
+
+  // Lower is better: combines recency gap + complexity load (Tiny Habits principle)
+  const frictionScore = Math.min(100, daysSince * 12 + (daysSince >= 3 ? 20 : 8));
+  friction.textContent = `Friction score: ${frictionScore}/100 (${frictionScore <= 35 ? 'low' : frictionScore <= 65 ? 'moderate' : 'high'})`;
 
   copyDaily.onclick = async () => {
-    const row = `${ds},3.0,1.0,yes,yes,7,1`; // date,deep_work_hours,learning_hours,main_task_done,exercise,energy,reflection_done
+    const row = `${ds},06:45,7.5,3.0,1.0,yes,yes,focused,8,quick-log-nudge-v2`; // matches daily_log.csv schema
     const ok = await copyText(row);
     copyDaily.textContent = ok ? 'Copied daily_log row ✅' : 'Copy failed';
   };
@@ -539,6 +551,11 @@ function initQuickLogNudge(dailyRows) {
     const row = `${ds},180,150`; // date,planned_minutes,actual_minutes
     const ok = await copyText(row);
     copyBlock.textContent = ok ? 'Copied time_blocks row ✅' : 'Copy failed';
+  };
+  copyCmd.onclick = async () => {
+    const cmd = `python3 tools/checkin.py --date ${ds} --deep-work-hours 3 --learning-hours 1 --exercise yes --main-task-done yes --energy 8 --notes quick-log-nudge-v2`;
+    const ok = await copyText(cmd);
+    copyCmd.textContent = ok ? 'Copied check-in command ✅' : 'Copy failed';
   };
 }
 
