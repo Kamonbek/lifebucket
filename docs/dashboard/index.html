@@ -342,7 +342,7 @@ async function loadCSV(path) {
 
 const SUPABASE_URL = 'https://ypqqpoxgilugoppzvfrt.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_AfO624Te3XiPdORdVGBZIw_tWUSFGhJ';
-const DASHBOARD_BUILD_MARKER = 'insight-pass-2026-05-07a';
+const DASHBOARD_BUILD_MARKER = 'insight-pass-2026-05-07b';
 const sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const sourceStats = { supabase: 0, csv: 0 };
@@ -1030,7 +1030,7 @@ async function main() {
   if (mainDone < 0.7) alerts.push(['Main task completion below 70% (7d)', 'high']);
   if (exp30 > income30) alerts.push(['30d expenses exceed 30d income', 'high']);
   if (projects.filter(p => (p.status||'').toLowerCase() === 'active').length > 3) alerts.push(['Too many active projects (>3)', 'medium']);
-  if (voice7 === 0) alerts.push(['No voice-journal entries in last 7 days', 'low']);
+  if (voice7 === 0) alerts.push(['No voice-journal entries in last 7 days (if intentional, ignore; otherwise restore dedicated TELEGRAM_STT_BOT_TOKEN ingestion)', 'low']);
   if (voiceStaleDays != null && voiceStaleDays > 14) alerts.push([`Voice journaling stale (${voiceStaleDays} days since last entry)`, 'medium']);
   if (recoveryRisk >= 60) alerts.push([`Recovery risk elevated (${recoveryRisk}/100): sleep consistency + journaling cadence + energy`, 'high']);
   if (staleDays != null && staleDays > 2) alerts.push([`Daily log appears stale (${staleDays} days old)`, 'high']);
