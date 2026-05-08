@@ -206,13 +206,15 @@
         <h3 class="section-title">Quick Log Nudges (2-minute start)</h3>
         <div class="note" id="quickLogPrompt">Loading today's nudge…</div>
         <div class="quick-log">
-          <button id="copyDailyRowBtn">Copy daily_log row</button>
+          <button id="copyMvlRowBtn">Copy minimum daily row (3 numbers)</button>
+          <button id="copyDailyRowBtn">Copy full daily_log row</button>
           <button id="copyHabitRowBtn">Copy habits row</button>
           <button id="copyTimeBlockRowBtn">Copy time_blocks row</button>
           <button id="copyCheckinCmdBtn">Copy one-command check-in</button>
         </div>
         <div class="note" id="nudgeFrictionScore">Friction score: --</div>
-        <div class="note">Marker: quick-log-nudge-v2</div>
+        <div class="note" id="nudgeRewardPreview">Reward preview: --</div>
+        <div class="note">Marker: quick-log-mvl-v3</div>
       </div>
 
       <div class="card narrow">
@@ -518,29 +520,40 @@ async function copyText(text) {
 
 function initQuickLogNudge(dailyRows) {
   const prompt = document.getElementById('quickLogPrompt');
+  const copyMvl = document.getElementById('copyMvlRowBtn');
   const copyDaily = document.getElementById('copyDailyRowBtn');
   const copyHabit = document.getElementById('copyHabitRowBtn');
   const copyBlock = document.getElementById('copyTimeBlockRowBtn');
   const copyCmd = document.getElementById('copyCheckinCmdBtn');
   const friction = document.getElementById('nudgeFrictionScore');
-  if (!prompt || !copyDaily || !copyHabit || !copyBlock || !copyCmd || !friction) return;
+  const reward = document.getElementById('nudgeRewardPreview');
+  if (!prompt || !copyMvl || !copyDaily || !copyHabit || !copyBlock || !copyCmd || !friction || !reward) return;
 
   const ds = new Date().toISOString().slice(0,10);
   const sortedDates = [...dailyRows].map(r => r.date).filter(Boolean).sort();
   const lastLogged = sortedDates.at(-1) || null;
   const daysSince = lastLogged ? daysStale(lastLogged) : 99;
 
-  const tinyStep = daysSince >= 3 ? 'Start with only deep_work_hours + energy (30 seconds).' : 'Log the full 3 numbers in under 2 minutes.';
-  prompt.textContent = `If-then plan: If it's after dinner, then run one quick check-in. ${tinyStep} Last logged day: ${lastLogged || 'none'}.`;
+  const tinyStep = daysSince >= 2
+    ? 'Start with a minimum log: sleep_hours + deep_work_hours + energy only (30-45 seconds).'
+    : 'You are warm: lock momentum by logging the full row in under 2 minutes.';
+  prompt.textContent = `If-then plan: If it's after dinner, copy one row now before any scrolling. ${tinyStep} Last logged day: ${lastLogged || 'none'}.`;
 
   // Lower is better: combines recency gap + complexity load (Tiny Habits principle)
-  const frictionScore = Math.min(100, daysSince * 12 + (daysSince >= 3 ? 20 : 8));
+  const frictionScore = Math.min(100, daysSince * 12 + (daysSince >= 2 ? 14 : 6));
   friction.textContent = `Friction score: ${frictionScore}/100 (${frictionScore <= 35 ? 'low' : frictionScore <= 65 ? 'moderate' : 'high'})`;
+  reward.textContent = `Reward preview: after one minimum row today, daily coverage confidence becomes +1 day.`;
 
-  copyDaily.onclick = async () => {
-    const row = `${ds},06:45,7.5,3.0,1.0,yes,yes,focused,8,quick-log-nudge-v2`; // matches daily_log.csv schema
+  copyMvl.onclick = async () => {
+    const row = `${ds},06:45,7.5,2.5,0.0,no,no,minimum-log,7,quick-log-mvl-v3`; // minimum viable daily row
     const ok = await copyText(row);
-    copyDaily.textContent = ok ? 'Copied daily_log row ✅' : 'Copy failed';
+    copyMvl.textContent = ok ? 'Copied minimum row ✅' : 'Copy failed';
+    if (ok) reward.textContent = 'Reward preview: ✅ minimum row copied. Paste into logs/daily_log.csv to protect your streak.';
+  };
+  copyDaily.onclick = async () => {
+    const row = `${ds},06:45,7.5,3.0,1.0,yes,yes,focused,8,quick-log-mvl-v3`; // matches daily_log.csv schema
+    const ok = await copyText(row);
+    copyDaily.textContent = ok ? 'Copied full daily_log row ✅' : 'Copy failed';
   };
   copyHabit.onclick = async () => {
     const row = `${ds},0.80,yes,yes,yes`; // date,score_0_1,habit1,habit2,habit3
@@ -553,7 +566,7 @@ function initQuickLogNudge(dailyRows) {
     copyBlock.textContent = ok ? 'Copied time_blocks row ✅' : 'Copy failed';
   };
   copyCmd.onclick = async () => {
-    const cmd = `python3 tools/checkin.py --date ${ds} --deep-work-hours 3 --learning-hours 1 --exercise yes --main-task-done yes --energy 8 --notes quick-log-nudge-v2`;
+    const cmd = `python3 tools/checkin.py --date ${ds} --deep-work-hours 3 --learning-hours 1 --exercise yes --main-task-done yes --energy 8 --notes quick-log-mvl-v3`;
     const ok = await copyText(cmd);
     copyCmd.textContent = ok ? 'Copied check-in command ✅' : 'Copy failed';
   };
