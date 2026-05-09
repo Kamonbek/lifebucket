@@ -207,6 +207,7 @@
         <div class="note" id="quickLogPrompt">Loading today's nudge…</div>
         <div class="quick-log">
           <button id="copyMvlRowBtn">Copy minimum daily row (3 numbers)</button>
+          <button id="copyIfThenPlanBtn">Copy if-then commitment</button>
           <button id="copyDailyRowBtn">Copy full daily_log row</button>
           <button id="copyHabitRowBtn">Copy habits row</button>
           <button id="copyTimeBlockRowBtn">Copy time_blocks row</button>
@@ -214,7 +215,7 @@
         </div>
         <div class="note" id="nudgeFrictionScore">Friction score: --</div>
         <div class="note" id="nudgeRewardPreview">Reward preview: --</div>
-        <div class="note">Marker: quick-log-mvl-v3</div>
+        <div class="note">Marker: quick-log-mvl-v4-ifthen</div>
       </div>
 
       <div class="card narrow">
@@ -521,13 +522,14 @@ async function copyText(text) {
 function initQuickLogNudge(dailyRows) {
   const prompt = document.getElementById('quickLogPrompt');
   const copyMvl = document.getElementById('copyMvlRowBtn');
+  const copyIfThen = document.getElementById('copyIfThenPlanBtn');
   const copyDaily = document.getElementById('copyDailyRowBtn');
   const copyHabit = document.getElementById('copyHabitRowBtn');
   const copyBlock = document.getElementById('copyTimeBlockRowBtn');
   const copyCmd = document.getElementById('copyCheckinCmdBtn');
   const friction = document.getElementById('nudgeFrictionScore');
   const reward = document.getElementById('nudgeRewardPreview');
-  if (!prompt || !copyMvl || !copyDaily || !copyHabit || !copyBlock || !copyCmd || !friction || !reward) return;
+  if (!prompt || !copyMvl || !copyIfThen || !copyDaily || !copyHabit || !copyBlock || !copyCmd || !friction || !reward) return;
 
   const ds = new Date().toISOString().slice(0,10);
   const sortedDates = [...dailyRows].map(r => r.date).filter(Boolean).sort();
@@ -545,10 +547,16 @@ function initQuickLogNudge(dailyRows) {
   reward.textContent = `Reward preview: after one minimum row today, daily coverage confidence becomes +1 day.`;
 
   copyMvl.onclick = async () => {
-    const row = `${ds},06:45,7.5,2.5,0.0,no,no,minimum-log,7,quick-log-mvl-v3`; // minimum viable daily row
+    const row = `${ds},06:45,7.5,2.5,0.0,no,no,minimum-log,7,quick-log-mvl-v4`; // minimum viable daily row
     const ok = await copyText(row);
     copyMvl.textContent = ok ? 'Copied minimum row ✅' : 'Copy failed';
     if (ok) reward.textContent = 'Reward preview: ✅ minimum row copied. Paste into logs/daily_log.csv to protect your streak.';
+  };
+  copyIfThen.onclick = async () => {
+    const plan = `If it is 21:30 and I pick up my phone, then I will paste one minimum row into daily_log.csv before any social app. Reward: mark win +1.`;
+    const ok = await copyText(plan);
+    copyIfThen.textContent = ok ? 'Copied if-then commitment ✅' : 'Copy failed';
+    if (ok) reward.textContent = 'Reward preview: ✅ if-then commitment copied. Read it once at 21:30, then execute one row immediately.';
   };
   copyDaily.onclick = async () => {
     const row = `${ds},06:45,7.5,3.0,1.0,yes,yes,focused,8,quick-log-mvl-v3`; // matches daily_log.csv schema
