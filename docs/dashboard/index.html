@@ -207,7 +207,7 @@
         <div class="note" id="quickLogPrompt">Loading today's nudge…</div>
         <div class="quick-log">
           <button id="copyMvlRowBtn">Copy minimum daily row (3 numbers)</button>
-          <button id="copyIfThenPlanBtn">Copy if-then commitment</button>
+          <button id="copyIfThenPlanBtn">Copy if-then + obstacle script</button>
           <button id="copyDailyRowBtn">Copy full daily_log row</button>
           <button id="copyHabitRowBtn">Copy habits row</button>
           <button id="copyTimeBlockRowBtn">Copy time_blocks row</button>
@@ -215,7 +215,7 @@
         </div>
         <div class="note" id="nudgeFrictionScore">Friction score: --</div>
         <div class="note" id="nudgeRewardPreview">Reward preview: --</div>
-        <div class="note">Marker: quick-log-mvl-v4-ifthen</div>
+        <div class="note">Marker: quick-log-mvl-v5-obstacle</div>
       </div>
 
       <div class="card narrow">
@@ -539,7 +539,9 @@ function initQuickLogNudge(dailyRows) {
   const tinyStep = daysSince >= 2
     ? 'Start with a minimum log: sleep_hours + deep_work_hours + energy only (30-45 seconds).'
     : 'You are warm: lock momentum by logging the full row in under 2 minutes.';
-  prompt.textContent = `If-then plan: If it's after dinner, copy one row now before any scrolling. ${tinyStep} Last logged day: ${lastLogged || 'none'}.`;
+  const localHour = new Date().getHours();
+  const anchorTime = localHour < 18 ? '21:30' : 'now';
+  prompt.textContent = `If-then + obstacle plan: If it is ${anchorTime}, paste one row before any scrolling; if I feel resistance, I will do the 3-number minimum first. ${tinyStep} Last logged day: ${lastLogged || 'none'}.`;
 
   // Lower is better: combines recency gap + complexity load (Tiny Habits principle)
   const frictionScore = Math.min(100, daysSince * 12 + (daysSince >= 2 ? 14 : 6));
@@ -553,10 +555,10 @@ function initQuickLogNudge(dailyRows) {
     if (ok) reward.textContent = 'Reward preview: ✅ minimum row copied. Paste into logs/daily_log.csv to protect your streak.';
   };
   copyIfThen.onclick = async () => {
-    const plan = `If it is 21:30 and I pick up my phone, then I will paste one minimum row into daily_log.csv before any social app. Reward: mark win +1.`;
+    const plan = `If it is 21:30 and I pick up my phone, then I will paste one minimum row into daily_log.csv before any social app. If I feel tired, then I will log only sleep_hours + deep_work_hours + energy first. Reward: mark win +1 and stop.`;
     const ok = await copyText(plan);
-    copyIfThen.textContent = ok ? 'Copied if-then commitment ✅' : 'Copy failed';
-    if (ok) reward.textContent = 'Reward preview: ✅ if-then commitment copied. Read it once at 21:30, then execute one row immediately.';
+    copyIfThen.textContent = ok ? 'Copied if-then + obstacle script ✅' : 'Copy failed';
+    if (ok) reward.textContent = 'Reward preview: ✅ script copied. Read once, execute one row, and immediately mark win +1.';
   };
   copyDaily.onclick = async () => {
     const row = `${ds},06:45,7.5,3.0,1.0,yes,yes,focused,8,quick-log-mvl-v3`; // matches daily_log.csv schema
