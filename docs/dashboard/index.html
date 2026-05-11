@@ -213,10 +213,11 @@
           <button id="copyHabitRowBtn">Copy habits row</button>
           <button id="copyTimeBlockRowBtn">Copy time_blocks row</button>
           <button id="copyCheckinCmdBtn">Copy one-command check-in</button>
+          <button id="copyWeeklyCommitBtn">Copy weekly commitment check-in cmd</button>
         </div>
         <div class="note" id="nudgeFrictionScore">Friction score: --</div>
         <div class="note" id="nudgeRewardPreview">Reward preview: --</div>
-        <div class="note">Marker: quick-log-kamronbek-fastrow-v6</div>
+        <div class="note">Marker: weekly-experiment-identity-commitment-v1</div>
       </div>
 
       <div class="card narrow">
@@ -529,9 +530,10 @@ function initQuickLogNudge(dailyRows) {
   const copyHabit = document.getElementById('copyHabitRowBtn');
   const copyBlock = document.getElementById('copyTimeBlockRowBtn');
   const copyCmd = document.getElementById('copyCheckinCmdBtn');
+  const copyWeeklyCommit = document.getElementById('copyWeeklyCommitBtn');
   const friction = document.getElementById('nudgeFrictionScore');
   const reward = document.getElementById('nudgeRewardPreview');
-  if (!prompt || !copyMvl || !copyKamronbek || !copyIfThen || !copyDaily || !copyHabit || !copyBlock || !copyCmd || !friction || !reward) return;
+  if (!prompt || !copyMvl || !copyKamronbek || !copyIfThen || !copyDaily || !copyHabit || !copyBlock || !copyCmd || !copyWeeklyCommit || !friction || !reward) return;
 
   const ds = new Date().toISOString().slice(0,10);
   const sortedDates = [...dailyRows].map(r => r.date).filter(Boolean).sort();
@@ -587,6 +589,12 @@ function initQuickLogNudge(dailyRows) {
     const cmd = `python3 tools/checkin.py --date ${ds} --deep-work-hours 3 --learning-hours 1 --exercise yes --main-task-done yes --energy 8 --notes quick-log-mvl-v3`;
     const ok = await copyText(cmd);
     copyCmd.textContent = ok ? 'Copied check-in command ✅' : 'Copy failed';
+  };
+  copyWeeklyCommit.onclick = async () => {
+    const cmd = `python3 tools/weekly_experiment_checkin.py --date ${ds} --score 8.0 --target 8.0 --notes weekly-experiment-identity-commitment-v1`;
+    const ok = await copyText(cmd);
+    copyWeeklyCommit.textContent = ok ? 'Copied weekly commitment cmd ✅' : 'Copy failed';
+    if (ok) reward.textContent = 'Reward preview: ✅ commitment command copied. Run it after your evening review to log motivation quality.';
   };
 }
 

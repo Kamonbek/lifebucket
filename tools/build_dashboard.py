@@ -159,6 +159,7 @@ def main():
     income = read_csv(os.path.join(LOGS, "income.csv"))
     expenses = read_csv(os.path.join(LOGS, "expenses.csv"))
     projects = read_csv(os.path.join(LOGS, "projects.csv"))
+    outcomes = read_csv(os.path.join(LOGS, "outcomes.csv"))
     targets = load_targets(os.path.join(CONFIG, "metrics_targets.csv"))
 
     today = datetime.now().date()
@@ -218,6 +219,10 @@ def main():
     deep_work_streak_days = deep_work_streak(daily, 3.0)
     main_done_streak_days = ratio_streak(daily, "main_task_done")
 
+    outcomes_7 = [r for r in outcomes if (parse_date(r.get("date", "")) and parse_date(r.get("date", "")) >= last_7)]
+    commitment_rows_7 = [r for r in outcomes_7 if (r.get("metric_name", "") == "identity_commitment_score")]
+    commitment_avg_7 = mean([to_float(r.get("actual", "0"), 0.0) for r in commitment_rows_7]) if commitment_rows_7 else 0.0
+
     # goal tracking table based on targets
     actuals = {
         "deep_work_hours": avg_deep7,
@@ -263,6 +268,11 @@ def main():
     lines.append("## Consistency streaks")
     lines.append(f"- Deep work >=3h streak: {deep_work_streak_days} day(s)")
     lines.append(f"- Main task done streak: {main_done_streak_days} day(s)")
+    lines.append("")
+
+    lines.append("## Weekly experiment pulse")
+    lines.append(f"- Identity commitment score (7d avg, outcomes.csv): {commitment_avg_7:.2f}/10")
+    lines.append(f"- Commitment check-ins logged (7d): {len(commitment_rows_7)}")
     lines.append("")
 
     lines.append("## Finance (30d, UZS-first)")
