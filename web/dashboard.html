@@ -217,7 +217,8 @@
         </div>
         <div class="note" id="nudgeFrictionScore">Friction score: --</div>
         <div class="note" id="nudgeRewardPreview">Reward preview: --</div>
-        <div class="note">Marker: weekly-experiment-identity-commitment-v1</div>
+        <div class="note" id="quickWinCounter">Quick wins this week: --</div>
+        <div class="note">Marker: weekly-experiment-instant-reward-loop-v2</div>
       </div>
 
       <div class="card narrow">
@@ -533,7 +534,30 @@ function initQuickLogNudge(dailyRows) {
   const copyWeeklyCommit = document.getElementById('copyWeeklyCommitBtn');
   const friction = document.getElementById('nudgeFrictionScore');
   const reward = document.getElementById('nudgeRewardPreview');
-  if (!prompt || !copyMvl || !copyKamronbek || !copyIfThen || !copyDaily || !copyHabit || !copyBlock || !copyCmd || !copyWeeklyCommit || !friction || !reward) return;
+  const quickWinCounter = document.getElementById('quickWinCounter');
+  if (!prompt || !copyMvl || !copyKamronbek || !copyIfThen || !copyDaily || !copyHabit || !copyBlock || !copyCmd || !copyWeeklyCommit || !friction || !reward || !quickWinCounter) return;
+
+  const weekKey = (() => {
+    const d = new Date();
+    const utc = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    utc.setUTCDate(utc.getUTCDate() + 4 - (utc.getUTCDay() || 7));
+    const yearStart = new Date(Date.UTC(utc.getUTCFullYear(), 0, 1));
+    const week = Math.ceil((((utc - yearStart) / 86400000) + 1) / 7);
+    return `${utc.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
+  })();
+  const winStorageKey = `lifeos_quicklog_wins_${weekKey}`;
+  let wins = Number(localStorage.getItem(winStorageKey) || '0');
+  const setWinCopy = () => {
+    quickWinCounter.textContent = `Quick wins this week: ${wins} (copy + paste streak signal)`;
+  };
+  setWinCopy();
+
+  const registerQuickWin = (actionLabel) => {
+    wins += 1;
+    localStorage.setItem(winStorageKey, String(wins));
+    setWinCopy();
+    reward.textContent = `Reward preview: ✅ ${actionLabel}. Weekly quick wins: ${wins}. Keep momentum with one paste now.`;
+  };
 
   const ds = new Date().toISOString().slice(0,10);
   const sortedDates = [...dailyRows].map(r => r.date).filter(Boolean).sort();
@@ -562,7 +586,7 @@ function initQuickLogNudge(dailyRows) {
     const row = `${ds},01:10,6.8,4.0,1.5,yes,yes,math-focus,8,kamronbek-fast-v1`;
     const ok = await copyText(row);
     copyKamronbek.textContent = ok ? 'Copied Kamronbek fast row ✅' : 'Copy failed';
-    if (ok) reward.textContent = 'Reward preview: ✅ Kamronbek fast row copied. Paste now; this preserves streak with one action.';
+    if (ok) registerQuickWin('Kamronbek fast row copied');
   };
   copyIfThen.onclick = async () => {
     const plan = `If it is 21:30 and I pick up my phone, then I will paste one minimum row into daily_log.csv before any social app. If I feel tired, then I will log only sleep_hours + deep_work_hours + energy first. Reward: mark win +1 and stop.`;
