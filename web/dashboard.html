@@ -208,6 +208,7 @@
         <div class="quick-log">
           <button id="copyMvlRowBtn">Copy minimum daily row (3 numbers)</button>
           <button id="copyKamronbekRowBtn">Copy Kamronbek fast row (10-second paste)</button>
+          <button id="copyYesterdayCloneBtn">Copy yesterday→today clone row</button>
           <button id="copyIfThenPlanBtn">Copy if-then + obstacle script</button>
           <button id="copyDailyRowBtn">Copy full daily_log row</button>
           <button id="copyHabitRowBtn">Copy habits row</button>
@@ -218,7 +219,7 @@
         <div class="note" id="nudgeFrictionScore">Friction score: --</div>
         <div class="note" id="nudgeRewardPreview">Reward preview: --</div>
         <div class="note" id="quickWinCounter">Quick wins this week: --</div>
-        <div class="note">Marker: weekly-experiment-instant-reward-loop-v2</div>
+        <div class="note">Marker: weekly-experiment-yesterday-clone-v1</div>
       </div>
 
       <div class="card narrow">
@@ -526,6 +527,7 @@ function initQuickLogNudge(dailyRows) {
   const prompt = document.getElementById('quickLogPrompt');
   const copyMvl = document.getElementById('copyMvlRowBtn');
   const copyKamronbek = document.getElementById('copyKamronbekRowBtn');
+  const copyYesterdayClone = document.getElementById('copyYesterdayCloneBtn');
   const copyIfThen = document.getElementById('copyIfThenPlanBtn');
   const copyDaily = document.getElementById('copyDailyRowBtn');
   const copyHabit = document.getElementById('copyHabitRowBtn');
@@ -535,7 +537,7 @@ function initQuickLogNudge(dailyRows) {
   const friction = document.getElementById('nudgeFrictionScore');
   const reward = document.getElementById('nudgeRewardPreview');
   const quickWinCounter = document.getElementById('quickWinCounter');
-  if (!prompt || !copyMvl || !copyKamronbek || !copyIfThen || !copyDaily || !copyHabit || !copyBlock || !copyCmd || !copyWeeklyCommit || !friction || !reward || !quickWinCounter) return;
+  if (!prompt || !copyMvl || !copyKamronbek || !copyYesterdayClone || !copyIfThen || !copyDaily || !copyHabit || !copyBlock || !copyCmd || !copyWeeklyCommit || !friction || !reward || !quickWinCounter) return;
 
   const weekKey = (() => {
     const d = new Date();
@@ -587,6 +589,18 @@ function initQuickLogNudge(dailyRows) {
     const ok = await copyText(row);
     copyKamronbek.textContent = ok ? 'Copied Kamronbek fast row ✅' : 'Copy failed';
     if (ok) registerQuickWin('Kamronbek fast row copied');
+  };
+  copyYesterdayClone.onclick = async () => {
+    const latest = [...dailyRows]
+      .filter(r => r && r.date)
+      .sort((a,b) => String(a.date).localeCompare(String(b.date)))
+      .at(-1);
+    const row = latest
+      ? `${ds},${latest.sleep_time || '23:30'},${latest.sleep_hours || '7.0'},${latest.deep_work_hours || '2.5'},${latest.learning_hours || '0.5'},${latest.exercise || 'no'},${latest.main_task_done || 'no'},${latest.notes || 'yesterday-clone-v1'},${latest.energy || '7'},yesterday-clone-v1`
+      : `${ds},23:30,7.0,2.5,0.5,no,no,yesterday-clone-v1,7,yesterday-clone-v1`;
+    const ok = await copyText(row);
+    copyYesterdayClone.textContent = ok ? 'Copied yesterday→today clone ✅' : 'Copy failed';
+    if (ok) registerQuickWin('Yesterday clone copied (recognition > recall)');
   };
   copyIfThen.onclick = async () => {
     const plan = `If it is 21:30 and I pick up my phone, then I will paste one minimum row into daily_log.csv before any social app. If I feel tired, then I will log only sleep_hours + deep_work_hours + energy first. Reward: mark win +1 and stop.`;
