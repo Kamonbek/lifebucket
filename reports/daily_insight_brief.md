@@ -1,31 +1,23 @@
 # Daily Insight Brief
-_Data anchor date: 2026-05-03_
-
-## Metrics (strict)
-- Sleep duration (latest 2026-04-29): 06:25:37 **[confidence: low]**
-- Sleep duration (7d avg): 06:25:37 (n=1) **[confidence: low]**
-- Wake-time consistency (std dev): N/A (requires >=5 points; got 1) **[confidence: low]**
-- Deep-work 7d vs prior 7d delta: N/A (latest7 n=1, prior7 n=0) **[confidence: low]**
-- Learning 7d vs prior 7d delta: N/A (latest7 n=1, prior7 n=0) **[confidence: low]**
-- Message volume trend: down (slope=-91.70 msgs/day over 4 days) **[confidence: medium]**
-- Voice/Text ratio: 110/303 = 0.363 **[confidence: medium]**
-
-## Top 3 Risk Signals
-- Wake-time consistency cannot be measured (<5 recent points).
-- Message volume trend is down (negative slope across observed days).
-- Voice/text ratio is low (text-heavy communication mix).
 
 ## Up
-- Sleep log has a valid latest duration (06:25:37).
-- Voice capture is present (110 voice vs 303 text messages).
+- Message volume Δ -404 (7d vs prior 7d).
 
 ## Down
-- Message volume trend is down.
+- No downward movement detectable from available complete comparisons.
 
 ## Drift
-- Wake-time consistency is unmeasurable due to sparse points.
-- Communication mix is drifting text-heavy (voice/text < 0.5).
-- Sleep trend reliability is low (insufficient sleep rows).
+- Sleep duration (latest): 7.50h [low].
+- Sleep duration (7d avg): 7.50h [low].
+- Wake-time consistency: unavailable (need >=5 wake-time points) [low].
+- Deep-work 7d vs prior 7d: unavailable [low].
+- Learning 7d vs prior 7d: unavailable [low].
+- Message volume trend (7d): 6 vs 410 (Δ -404) [medium].
+- Voice/text ratio (7d): 2/4 = 0.500 [low].
+- Top 3 risk signals:
+  - Circadian drift unknown: only 1 wake-time points in-window.
+  - Deep-work trend unknown: insufficient 14-day coverage.
+  - Learning trend unknown: insufficient 14-day coverage.
 
 ## Immediate Action
-- Capture at least 5 wake times in the next 7 days to unlock wake consistency metric.
+- Log complete daily data for the next 7 days to unlock reliable trend detection.

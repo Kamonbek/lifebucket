@@ -210,6 +210,7 @@
           <button id="copyKamronbekRowBtn">Copy Kamronbek fast row (10-second paste)</button>
           <button id="copyYesterdayCloneBtn">Copy yesterday→today clone row</button>
           <button id="copyIfThenPlanBtn">Copy if-then + obstacle script</button>
+          <button id="copyTonightAppointmentBtn">Copy tonight logging appointment (if-then)</button>
           <button id="copyDailyRowBtn">Copy full daily_log row</button>
           <button id="copyHabitRowBtn">Copy habits row</button>
           <button id="copyTimeBlockRowBtn">Copy time_blocks row</button>
@@ -219,7 +220,7 @@
         <div class="note" id="nudgeFrictionScore">Friction score: --</div>
         <div class="note" id="nudgeRewardPreview">Reward preview: --</div>
         <div class="note" id="quickWinCounter">Quick wins this week: --</div>
-        <div class="note">Marker: weekly-experiment-yesterday-clone-v1</div>
+        <div class="note">Marker: weekly-experiment-implementation-appointment-v1</div>
       </div>
 
       <div class="card narrow">
@@ -529,6 +530,7 @@ function initQuickLogNudge(dailyRows) {
   const copyKamronbek = document.getElementById('copyKamronbekRowBtn');
   const copyYesterdayClone = document.getElementById('copyYesterdayCloneBtn');
   const copyIfThen = document.getElementById('copyIfThenPlanBtn');
+  const copyTonightAppointment = document.getElementById('copyTonightAppointmentBtn');
   const copyDaily = document.getElementById('copyDailyRowBtn');
   const copyHabit = document.getElementById('copyHabitRowBtn');
   const copyBlock = document.getElementById('copyTimeBlockRowBtn');
@@ -537,7 +539,7 @@ function initQuickLogNudge(dailyRows) {
   const friction = document.getElementById('nudgeFrictionScore');
   const reward = document.getElementById('nudgeRewardPreview');
   const quickWinCounter = document.getElementById('quickWinCounter');
-  if (!prompt || !copyMvl || !copyKamronbek || !copyYesterdayClone || !copyIfThen || !copyDaily || !copyHabit || !copyBlock || !copyCmd || !copyWeeklyCommit || !friction || !reward || !quickWinCounter) return;
+  if (!prompt || !copyMvl || !copyKamronbek || !copyYesterdayClone || !copyIfThen || !copyTonightAppointment || !copyDaily || !copyHabit || !copyBlock || !copyCmd || !copyWeeklyCommit || !friction || !reward || !quickWinCounter) return;
 
   const weekKey = (() => {
     const d = new Date();
@@ -607,6 +609,12 @@ function initQuickLogNudge(dailyRows) {
     const ok = await copyText(plan);
     copyIfThen.textContent = ok ? 'Copied if-then + obstacle script ✅' : 'Copy failed';
     if (ok) reward.textContent = 'Reward preview: ✅ script copied. Read once, execute one row, and immediately mark win +1.';
+  };
+  copyTonightAppointment.onclick = async () => {
+    const appointment = `Tonight logging appointment (implementation intention): If it is 21:30 in my room, then I will open logs/daily_log.csv and paste exactly one row before any scrolling. Backup trigger: if 21:30 is missed, do it immediately after plugging in my phone. Reward: say "win +1" out loud after paste.`;
+    const ok = await copyText(appointment);
+    copyTonightAppointment.textContent = ok ? 'Copied tonight appointment ✅' : 'Copy failed';
+    if (ok) registerQuickWin('Implementation-intention appointment copied');
   };
   copyDaily.onclick = async () => {
     const row = `${ds},06:45,7.5,3.0,1.0,yes,yes,focused,8,quick-log-mvl-v3`; // matches daily_log.csv schema
