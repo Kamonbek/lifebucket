@@ -216,12 +216,13 @@
           <button id="copyTimeBlockRowBtn">Copy time_blocks row</button>
           <button id="copyCheckinCmdBtn">Copy one-command check-in</button>
           <button id="copyWeeklyCommitBtn">Copy weekly commitment check-in cmd</button>
+          <button id="copyChatCheckpointBtn">Copy chat-first checkpoint (frictionless)</button>
         </div>
         <div class="note" id="nudgeFrictionScore">Friction score: --</div>
         <div class="note" id="nudgeRewardPreview">Reward preview: --</div>
         <div class="note" id="microCommitMeter">Micro-commit loop v5: --</div>
         <div class="note" id="quickWinCounter">Quick wins this week: --</div>
-        <div class="note">Marker: weekly-experiment-implementation-appointment-v1</div>
+        <div class="note">Marker: weekly-experiment-chat-checkpoint-v2</div>
       </div>
 
       <div class="card narrow">
@@ -537,11 +538,12 @@ function initQuickLogNudge(dailyRows) {
   const copyBlock = document.getElementById('copyTimeBlockRowBtn');
   const copyCmd = document.getElementById('copyCheckinCmdBtn');
   const copyWeeklyCommit = document.getElementById('copyWeeklyCommitBtn');
+  const copyChatCheckpoint = document.getElementById('copyChatCheckpointBtn');
   const friction = document.getElementById('nudgeFrictionScore');
   const reward = document.getElementById('nudgeRewardPreview');
   const microCommitMeter = document.getElementById('microCommitMeter');
   const quickWinCounter = document.getElementById('quickWinCounter');
-  if (!prompt || !copyMvl || !copyKamronbek || !copyYesterdayClone || !copyIfThen || !copyTonightAppointment || !copyDaily || !copyHabit || !copyBlock || !copyCmd || !copyWeeklyCommit || !friction || !reward || !microCommitMeter || !quickWinCounter) return;
+  if (!prompt || !copyMvl || !copyKamronbek || !copyYesterdayClone || !copyIfThen || !copyTonightAppointment || !copyDaily || !copyHabit || !copyBlock || !copyCmd || !copyWeeklyCommit || !copyChatCheckpoint || !friction || !reward || !microCommitMeter || !quickWinCounter) return;
 
   const weekKey = (() => {
     const d = new Date();
@@ -653,6 +655,12 @@ function initQuickLogNudge(dailyRows) {
     const ok = await copyText(cmd);
     copyWeeklyCommit.textContent = ok ? 'Copied weekly commitment cmd ✅' : 'Copy failed';
     if (ok) reward.textContent = 'Reward preview: ✅ commitment command copied. Run it after your evening review to log motivation quality.';
+  };
+  copyChatCheckpoint.onclick = async () => {
+    const msg = `LOG ${ds} sleep=6.9h deep=3.2h learn=1.1h energy=8 task_done=1 exercise=1 note=kamronbek-fast-checkpoint-v1`;
+    const ok = await copyText(msg);
+    copyChatCheckpoint.textContent = ok ? 'Copied chat checkpoint ✅' : 'Copy failed';
+    if (ok) registerQuickWin('Chat-first checkpoint copied (capture now, file later)', true);
   };
 }
 
