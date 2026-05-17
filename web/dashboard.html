@@ -217,12 +217,14 @@
           <button id="copyCheckinCmdBtn">Copy one-command check-in</button>
           <button id="copyWeeklyCommitBtn">Copy weekly commitment check-in cmd</button>
           <button id="copyChatCheckpointBtn">Copy chat-first checkpoint (frictionless)</button>
+          <button id="copyCelebrationBtn">Copy 20-second celebration reward script</button>
         </div>
         <div class="note" id="nudgeFrictionScore">Friction score: --</div>
         <div class="note" id="nudgeRewardPreview">Reward preview: --</div>
         <div class="note" id="microCommitMeter">Micro-commit loop v5: --</div>
         <div class="note" id="quickWinCounter">Quick wins this week: --</div>
-        <div class="note">Marker: weekly-experiment-chat-checkpoint-v2</div>
+        <div class="note" id="celebrationPreview">Celebration loop: --</div>
+        <div class="note">Marker: weekly-experiment-celebration-loop-v1</div>
       </div>
 
       <div class="card narrow">
@@ -539,11 +541,13 @@ function initQuickLogNudge(dailyRows) {
   const copyCmd = document.getElementById('copyCheckinCmdBtn');
   const copyWeeklyCommit = document.getElementById('copyWeeklyCommitBtn');
   const copyChatCheckpoint = document.getElementById('copyChatCheckpointBtn');
+  const copyCelebration = document.getElementById('copyCelebrationBtn');
   const friction = document.getElementById('nudgeFrictionScore');
   const reward = document.getElementById('nudgeRewardPreview');
   const microCommitMeter = document.getElementById('microCommitMeter');
   const quickWinCounter = document.getElementById('quickWinCounter');
-  if (!prompt || !copyMvl || !copyKamronbek || !copyYesterdayClone || !copyIfThen || !copyTonightAppointment || !copyDaily || !copyHabit || !copyBlock || !copyCmd || !copyWeeklyCommit || !copyChatCheckpoint || !friction || !reward || !microCommitMeter || !quickWinCounter) return;
+  const celebrationPreview = document.getElementById('celebrationPreview');
+  if (!prompt || !copyMvl || !copyKamronbek || !copyYesterdayClone || !copyIfThen || !copyTonightAppointment || !copyDaily || !copyHabit || !copyBlock || !copyCmd || !copyWeeklyCommit || !copyChatCheckpoint || !copyCelebration || !friction || !reward || !microCommitMeter || !quickWinCounter || !celebrationPreview) return;
 
   const weekKey = (() => {
     const d = new Date();
@@ -593,6 +597,7 @@ function initQuickLogNudge(dailyRows) {
   const frictionScore = Math.min(100, daysSince * 12 + (daysSince >= 2 ? 14 : 6));
   friction.textContent = `Friction score: ${frictionScore}/100 (${frictionScore <= 35 ? 'low' : frictionScore <= 65 ? 'moderate' : 'high'})`;
   reward.textContent = `Reward preview: after one minimum row today, daily coverage confidence becomes +1 day.`;
+  celebrationPreview.textContent = 'Celebration loop: pending. After any log action, celebrate for 20 seconds to reinforce repeat behavior.';
 
   copyMvl.onclick = async () => {
     const row = `${ds},06:45,7.5,2.5,0.0,no,no,minimum-log,7,quick-log-mvl-v4`; // minimum viable daily row
@@ -661,6 +666,15 @@ function initQuickLogNudge(dailyRows) {
     const ok = await copyText(msg);
     copyChatCheckpoint.textContent = ok ? 'Copied chat checkpoint ✅' : 'Copy failed';
     if (ok) registerQuickWin('Chat-first checkpoint copied (capture now, file later)', true);
+  };
+  copyCelebration.onclick = async () => {
+    const script = `After I paste my daily log row, I will celebrate for 20 seconds: say "Win. I'm the kind of person who logs daily." Then I will mark quick-win +1.`;
+    const ok = await copyText(script);
+    copyCelebration.textContent = ok ? 'Copied celebration script ✅' : 'Copy failed';
+    if (ok) {
+      registerQuickWin('Celebration reward script copied', false);
+      celebrationPreview.textContent = 'Celebration loop: active ✅ (copy → paste → 20s celebration).';
+    }
   };
 }
 
