@@ -160,6 +160,7 @@ def main():
     expenses = read_csv(os.path.join(LOGS, "expenses.csv"))
     projects = read_csv(os.path.join(LOGS, "projects.csv"))
     outcomes = read_csv(os.path.join(LOGS, "outcomes.csv"))
+    if_then_plans = read_csv(os.path.join(LOGS, "if_then_plans.csv"))
     targets = load_targets(os.path.join(CONFIG, "metrics_targets.csv"))
 
     today = datetime.now().date()
@@ -223,6 +224,10 @@ def main():
     commitment_rows_7 = [r for r in outcomes_7 if (r.get("metric_name", "") == "identity_commitment_score")]
     commitment_avg_7 = mean([to_float(r.get("actual", "0"), 0.0) for r in commitment_rows_7]) if commitment_rows_7 else 0.0
 
+    if_then_7 = [r for r in if_then_plans if (parse_date(r.get("date", "")) and parse_date(r.get("date", "")) >= last_7)]
+    if_then_adherence_7 = mean([to_float(r.get("adherence_done", "0"), 0.0) for r in if_then_7]) if if_then_7 else 0.0
+    if_then_confidence_7 = mean([to_float(r.get("confidence_1_10", "0"), 0.0) for r in if_then_7]) if if_then_7 else 0.0
+
     # goal tracking table based on targets
     actuals = {
         "deep_work_hours": avg_deep7,
@@ -273,6 +278,9 @@ def main():
     lines.append("## Weekly experiment pulse")
     lines.append(f"- Identity commitment score (7d avg, outcomes.csv): {commitment_avg_7:.2f}/10")
     lines.append(f"- Commitment check-ins logged (7d): {len(commitment_rows_7)}")
+    lines.append(f"- If-then adherence (7d, if_then_plans.csv): {pct(if_then_adherence_7)}")
+    lines.append(f"- If-then confidence (7d avg): {if_then_confidence_7:.2f}/10")
+    lines.append(f"- If-then plans logged (7d): {len(if_then_7)}")
     lines.append("")
 
     lines.append("## Finance (30d, UZS-first)")
@@ -322,6 +330,8 @@ def main():
         alerts.append(f"- High: 30d expenses exceed 30d income ({expense30_uzs:,.0f} > {income30_uzs:,.0f} UZS).")
     if len(active_projects) > 3:
         alerts.append(f"- Medium: Active projects overload ({len(active_projects)} > 3).")
+    if if_then_7 and if_then_adherence_7 < 0.70:
+        alerts.append(f"- Medium: If-then adherence is weak ({pct(if_then_adherence_7)} < 70%).")
     if not alerts:
         lines.append("- No major alerts")
     else:
@@ -340,6 +350,8 @@ def main():
         recs.append("Project risk is high: pause low-priority work and break deadlines into weekly milestones.")
     if net30_uzs < targets.get("net_income", {}).get("target", 13000000.0):
         recs.append("Income pace is below target: prioritize activities with direct cash impact this week.")
+    if if_then_adherence_7 < 0.80:
+        recs.append("Run tools/if_then_planner.py daily with adherence=1 after your evening log to harden cue->action consistency.")
 
     if recs:
         for r in recs:

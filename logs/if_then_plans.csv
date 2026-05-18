@@ -1,0 +1,2 @@
+date,cue,action,obstacle,fallback,confidence_1_10,adherence_done,notes
+2026-05-18,21:30 phone charging,paste minimum daily row to daily_log.csv,feel too tired to open laptop,"log only sleep_hours, deep_work_hours, energy from phone",8.5,1,weekly-experiment-if-then-adherence-v2

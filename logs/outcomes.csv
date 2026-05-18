@@ -2,3 +2,4 @@ date,weekly_goal,metric_name,target,actual,status,notes
 2026-04-28,Income pace,net_income_30d,1000,137.5,off_track,baseline dummy
 2026-04-28,Focus pace,deep_work_hours_7d,4.0,3.0,off_track,baseline dummy
 2026-05-11,Identity-based weekly commitment,identity_commitment_score,8.0,8.0,on_track,weekly-experiment-identity-commitment-v1
+2026-05-18,If-then daily logging adherence,if_then_adherence_done,0.80,1.00,on_track,weekly-experiment-if-then-adherence-v2

@@ -95,6 +95,19 @@ create table if not exists outcomes (
   primary key(date, weekly_goal, metric_name)
 );
 
+create table if not exists if_then_plans (
+  date date not null,
+  cue text not null,
+  action text not null,
+  obstacle text,
+  fallback text,
+  confidence_1_10 numeric,
+  adherence_done integer,
+  notes text,
+  updated_at timestamptz not null default now(),
+  primary key(date, cue, action)
+);
+
 create table if not exists voice_journal (
   message_id bigint primary key,
   created_at_utc timestamptz not null,
@@ -198,11 +211,12 @@ select
   (select coalesce(sum(amount),0) from expense_logs where currency = 'UZS' and date >= current_date - interval '30 days') as expenses_30d_uzs,
   (select count(*) from projects where status = 'active') as active_projects,
   (select count(*) from voice_journal where created_at_utc >= now() - interval '7 days') as voice_entries_7d,
+  (select coalesce(avg(adherence_done::numeric),0) from if_then_plans where date >= current_date - interval '7 days') as if_then_adherence_7d,
   now() as generated_at;
 
 -- Static dashboard reads with the publishable/anon key. The data model currently
 -- contains non-sensitive dummy or user-approved life metrics. Tighten these grants
 -- later if you add private journals, banking details, or authentication.
 grant usage on schema public to anon, authenticated;
-grant select on daily_logs, income_logs, expense_logs, expense_tags, projects, habits, time_blocks, outcomes, voice_journal, sleep_log, chat_events, numeric_facts, chat_activity_daily, platform_message_daily, life_os_latest_summary to anon, authenticated;
-grant insert, update, delete on daily_logs, income_logs, expense_logs, expense_tags, projects, habits, time_blocks, outcomes, voice_journal, sleep_log, chat_events, numeric_facts, chat_activity_daily, platform_message_daily to authenticated;
+grant select on daily_logs, income_logs, expense_logs, expense_tags, projects, habits, time_blocks, outcomes, if_then_plans, voice_journal, sleep_log, chat_events, numeric_facts, chat_activity_daily, platform_message_daily, life_os_latest_summary to anon, authenticated;
+grant insert, update, delete on daily_logs, income_logs, expense_logs, expense_tags, projects, habits, time_blocks, outcomes, if_then_plans, voice_journal, sleep_log, chat_events, numeric_facts, chat_activity_daily, platform_message_daily to authenticated;

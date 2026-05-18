@@ -212,6 +212,36 @@ def main():
                      none_if_blank(r.get('status','')), none_if_blank(r.get('notes','')))
                 )
 
+            for r in read_csv(LOGS / 'if_then_plans.csv'):
+                d = r.get('date')
+                cue = r.get('cue')
+                action = r.get('action')
+                if not d or not cue or not action:
+                    continue
+                cur.execute(
+                    '''
+                    insert into if_then_plans(date,cue,action,obstacle,fallback,confidence_1_10,adherence_done,notes)
+                    values (%s,%s,%s,%s,%s,%s,%s,%s)
+                    on conflict(date, cue, action) do update set
+                      obstacle=excluded.obstacle,
+                      fallback=excluded.fallback,
+                      confidence_1_10=excluded.confidence_1_10,
+                      adherence_done=excluded.adherence_done,
+                      notes=excluded.notes,
+                      updated_at=now()
+                    ''',
+                    (
+                        d,
+                        cue,
+                        action,
+                        none_if_blank(r.get('obstacle','')),
+                        none_if_blank(r.get('fallback','')),
+                        n(r.get('confidence_1_10','')),
+                        int(float(r.get('adherence_done') or 0)) if str(r.get('adherence_done','')).strip() != '' else None,
+                        none_if_blank(r.get('notes','')),
+                    )
+                )
+
             for r in read_csv(LOGS / 'voice_journal.csv'):
                 msg_id = r.get('message_id')
                 if not msg_id:
@@ -428,7 +458,7 @@ def main():
 
             core_tables = [
                 'daily_logs', 'income_logs', 'expense_logs', 'projects',
-                'habits', 'time_blocks', 'outcomes', 'voice_journal'
+                'habits', 'time_blocks', 'outcomes', 'if_then_plans', 'voice_journal'
             ]
             row_counts = {}
             for t in core_tables:

@@ -215,7 +215,7 @@
           <button id="copyHabitRowBtn">Copy habits row</button>
           <button id="copyTimeBlockRowBtn">Copy time_blocks row</button>
           <button id="copyCheckinCmdBtn">Copy one-command check-in</button>
-          <button id="copyWeeklyCommitBtn">Copy weekly commitment check-in cmd</button>
+          <button id="copyWeeklyCommitBtn">Copy if-then adherence check-in cmd</button>
           <button id="copyChatCheckpointBtn">Copy chat-first checkpoint (frictionless)</button>
           <button id="copyStreakRescueBtn">Copy streak-rescue row (30-second recovery)</button>
           <button id="copyCelebrationBtn">Copy 20-second celebration reward script</button>
@@ -226,7 +226,7 @@
         <div class="note" id="quickWinCounter">Quick wins this week: --</div>
         <div class="note" id="streakRescueStatus">Streak rescue: --</div>
         <div class="note" id="celebrationPreview">Celebration loop: --</div>
-        <div class="note">Marker: weekly-experiment-streak-rescue-v1</div>
+        <div class="note">Marker: weekly-experiment-if-then-adherence-v2</div>
       </div>
 
       <div class="card narrow">
@@ -678,10 +678,10 @@ function initQuickLogNudge(dailyRows) {
     copyCmd.textContent = ok ? 'Copied check-in command ✅' : 'Copy failed';
   };
   copyWeeklyCommit.onclick = async () => {
-    const cmd = `python3 tools/weekly_experiment_checkin.py --date ${ds} --score 8.0 --target 8.0 --notes weekly-experiment-identity-commitment-v1`;
+    const cmd = `python3 tools/if_then_planner.py --date ${ds} --cue '21:30 phone charging' --action 'paste minimum daily row to daily_log.csv' --obstacle 'feel too tired to open laptop' --fallback 'log only sleep_hours, deep_work_hours, energy from phone' --confidence 8 --adherence 1 --notes weekly-experiment-if-then-adherence-v2`;
     const ok = await copyText(cmd);
-    copyWeeklyCommit.textContent = ok ? 'Copied weekly commitment cmd ✅' : 'Copy failed';
-    if (ok) reward.textContent = 'Reward preview: ✅ commitment command copied. Run it after your evening review to log motivation quality.';
+    copyWeeklyCommit.textContent = ok ? 'Copied if-then adherence cmd ✅' : 'Copy failed';
+    if (ok) reward.textContent = 'Reward preview: ✅ if-then command copied. Run nightly after logging to track adherence trend.';
   };
   copyChatCheckpoint.onclick = async () => {
     const msg = `LOG ${ds} sleep=6.9h deep=3.2h learn=1.1h energy=8 task_done=1 exercise=1 note=kamronbek-fast-checkpoint-v1`;
