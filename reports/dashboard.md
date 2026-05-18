@@ -1,6 +1,6 @@
 # Life Analytics Dashboard v2
 
-Generated: 2026-05-17 04:33:45
+Generated: 2026-05-18 04:34:16
 
 ## Executive cockpit
 - Execution velocity score: 0.0/100
@@ -28,8 +28,8 @@ Generated: 2026-05-17 04:33:45
 - Main task done streak: 1 day(s)
 
 ## Weekly experiment pulse
-- Identity commitment score (7d avg, outcomes.csv): 8.00/10
-- Commitment check-ins logged (7d): 1
+- Identity commitment score (7d avg, outcomes.csv): 0.00/10
+- Commitment check-ins logged (7d): 0
 
 ## Finance (30d, UZS-first)
 - Income: 4000000.00 UZS, 500.00 USD
