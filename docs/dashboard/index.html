@@ -219,6 +219,7 @@
           <button id="copyChatCheckpointBtn">Copy chat-first checkpoint (frictionless)</button>
           <button id="copyStreakRescueBtn">Copy streak-rescue row (30-second recovery)</button>
           <button id="copyCelebrationBtn">Copy 20-second celebration reward script</button>
+          <button id="confirmPastedBtn">I pasted it ✅ (close loop)</button>
         </div>
         <div class="note" id="nudgeFrictionScore">Friction score: --</div>
         <div class="note" id="nudgeRewardPreview">Reward preview: --</div>
@@ -545,13 +546,14 @@ function initQuickLogNudge(dailyRows) {
   const copyChatCheckpoint = document.getElementById('copyChatCheckpointBtn');
   const copyStreakRescue = document.getElementById('copyStreakRescueBtn');
   const copyCelebration = document.getElementById('copyCelebrationBtn');
+  const confirmPasted = document.getElementById('confirmPastedBtn');
   const friction = document.getElementById('nudgeFrictionScore');
   const reward = document.getElementById('nudgeRewardPreview');
   const microCommitMeter = document.getElementById('microCommitMeter');
   const quickWinCounter = document.getElementById('quickWinCounter');
   const streakRescueStatus = document.getElementById('streakRescueStatus');
   const celebrationPreview = document.getElementById('celebrationPreview');
-  if (!prompt || !copyMvl || !copyKamronbek || !copyYesterdayClone || !copyIfThen || !copyTonightAppointment || !copyDaily || !copyHabit || !copyBlock || !copyCmd || !copyWeeklyCommit || !copyChatCheckpoint || !copyStreakRescue || !copyCelebration || !friction || !reward || !microCommitMeter || !quickWinCounter || !streakRescueStatus || !celebrationPreview) return;
+  if (!prompt || !copyMvl || !copyKamronbek || !copyYesterdayClone || !copyIfThen || !copyTonightAppointment || !copyDaily || !copyHabit || !copyBlock || !copyCmd || !copyWeeklyCommit || !copyChatCheckpoint || !copyStreakRescue || !copyCelebration || !confirmPasted || !friction || !reward || !microCommitMeter || !quickWinCounter || !streakRescueStatus || !celebrationPreview) return;
 
   const weekKey = (() => {
     const d = new Date();
@@ -563,15 +565,19 @@ function initQuickLogNudge(dailyRows) {
   })();
   const winStorageKey = `lifeos_quicklog_wins_${weekKey}`;
   let wins = Number(localStorage.getItem(winStorageKey) || '0');
-  const todayKey = `lifeos_log_micro_commit_${new Date().toISOString().slice(0,10)}`;
+  const today = new Date().toISOString().slice(0,10);
+  const copiedKey = `lifeos_log_micro_commit_copied_${today}`;
+  const pastedKey = `lifeos_log_micro_commit_pasted_${today}`;
   const setWinCopy = () => {
     quickWinCounter.textContent = `Quick wins this week: ${wins} (copy + paste streak signal)`;
   };
   const renderMicroCommit = () => {
-    const done = localStorage.getItem(todayKey) === '1';
-    microCommitMeter.textContent = done
-      ? 'Micro-commit loop v5: 100% complete today (one action copied).'
-      : 'Micro-commit loop v5: 0% complete today. Do one copy action to close today\'s loop.';
+    const copied = localStorage.getItem(copiedKey) === '1';
+    const pasted = localStorage.getItem(pastedKey) === '1';
+    const pct = pasted ? 100 : copied ? 50 : 0;
+    microCommitMeter.textContent = `Micro-commit loop v6: ${pct}% today (${copied ? 'copied' : 'not copied'} → ${pasted ? 'pasted' : 'not pasted'}).`;
+    confirmPasted.disabled = !copied;
+    confirmPasted.textContent = pasted ? 'Loop closed today ✅' : 'I pasted it ✅ (close loop)';
   };
   setWinCopy();
   renderMicroCommit();
@@ -579,7 +585,8 @@ function initQuickLogNudge(dailyRows) {
   const registerQuickWin = (actionLabel, closesLoop = false) => {
     wins += 1;
     localStorage.setItem(winStorageKey, String(wins));
-    if (closesLoop) localStorage.setItem(todayKey, '1');
+    localStorage.setItem(copiedKey, '1');
+    if (closesLoop) localStorage.setItem(pastedKey, '1');
     setWinCopy();
     renderMicroCommit();
     reward.textContent = `Reward preview: ✅ ${actionLabel}. Weekly quick wins: ${wins}. Keep momentum with one paste now.`;
@@ -625,13 +632,13 @@ function initQuickLogNudge(dailyRows) {
     const row = `${ds},06:45,7.5,2.5,0.0,no,no,minimum-log,7,quick-log-mvl-v4`; // minimum viable daily row
     const ok = await copyText(row);
     copyMvl.textContent = ok ? 'Copied minimum row ✅' : 'Copy failed';
-    if (ok) registerQuickWin('Minimum row copied', true);
+    if (ok) registerQuickWin('Minimum row copied', false);
   };
   copyKamronbek.onclick = async () => {
     const row = `${ds},01:10,6.8,4.0,1.5,yes,yes,math-focus,8,kamronbek-fast-v1`;
     const ok = await copyText(row);
     copyKamronbek.textContent = ok ? 'Copied Kamronbek fast row ✅' : 'Copy failed';
-    if (ok) registerQuickWin('Kamronbek fast row copied', true);
+    if (ok) registerQuickWin('Kamronbek fast row copied', false);
   };
   copyYesterdayClone.onclick = async () => {
     const latest = [...dailyRows]
@@ -643,19 +650,19 @@ function initQuickLogNudge(dailyRows) {
       : `${ds},23:30,7.0,2.5,0.5,no,no,yesterday-clone-v1,7,yesterday-clone-v1`;
     const ok = await copyText(row);
     copyYesterdayClone.textContent = ok ? 'Copied yesterday→today clone ✅' : 'Copy failed';
-    if (ok) registerQuickWin('Yesterday clone copied (recognition > recall)', true);
+    if (ok) registerQuickWin('Yesterday clone copied (recognition > recall)', false);
   };
   copyIfThen.onclick = async () => {
     const plan = `If it is 21:30 and I pick up my phone, then I will paste one minimum row into daily_log.csv before any social app. If I feel tired, then I will log only sleep_hours + deep_work_hours + energy first. Reward: mark win +1 and stop.`;
     const ok = await copyText(plan);
     copyIfThen.textContent = ok ? 'Copied if-then + obstacle script ✅' : 'Copy failed';
-    if (ok) registerQuickWin('Implementation-intention script copied', true);
+    if (ok) registerQuickWin('Implementation-intention script copied', false);
   };
   copyTonightAppointment.onclick = async () => {
     const appointment = `Tonight logging appointment (implementation intention): If it is 21:30 in my room, then I will open logs/daily_log.csv and paste exactly one row before any scrolling. Backup trigger: if 21:30 is missed, do it immediately after plugging in my phone. Reward: say "win +1" out loud after paste.`;
     const ok = await copyText(appointment);
     copyTonightAppointment.textContent = ok ? 'Copied tonight appointment ✅' : 'Copy failed';
-    if (ok) registerQuickWin('Implementation-intention appointment copied', true);
+    if (ok) registerQuickWin('Implementation-intention appointment copied', false);
   };
   copyDaily.onclick = async () => {
     const row = `${ds},06:45,7.5,3.0,1.0,yes,yes,focused,8,quick-log-mvl-v3`; // matches daily_log.csv schema
@@ -687,14 +694,14 @@ function initQuickLogNudge(dailyRows) {
     const msg = `LOG ${ds} sleep=6.9h deep=3.2h learn=1.1h energy=8 task_done=1 exercise=1 note=kamronbek-fast-checkpoint-v1`;
     const ok = await copyText(msg);
     copyChatCheckpoint.textContent = ok ? 'Copied chat checkpoint ✅' : 'Copy failed';
-    if (ok) registerQuickWin('Chat-first checkpoint copied (capture now, file later)', true);
+    if (ok) registerQuickWin('Chat-first checkpoint copied (capture now, file later)', false);
   };
   copyStreakRescue.onclick = async () => {
     const row = `${ds},06:50,7.0,0.5,0.2,no,no,streak-rescue,6,rescue-row-v1`;
     const ok = await copyText(row);
     copyStreakRescue.textContent = ok ? 'Copied streak rescue row ✅' : 'Copy failed';
     if (ok) {
-      registerQuickWin('Streak rescue row copied', true);
+      registerQuickWin('Streak rescue row copied', false);
       streakRescueStatus.textContent = 'Streak rescue: row copied. Paste now to protect weekly logging momentum.';
     }
   };
@@ -707,7 +714,14 @@ function initQuickLogNudge(dailyRows) {
       celebrationPreview.textContent = 'Celebration loop: active ✅ (copy → paste → 20s celebration).';
     }
   };
+  confirmPasted.onclick = () => {
+    localStorage.setItem(pastedKey, '1');
+    renderMicroCommit();
+    reward.textContent = `Reward preview: ✅ Loop closed for ${today}. Nice follow-through — this is what builds automatic logging.`;
+    celebrationPreview.textContent = 'Celebration loop: close complete. Take 20 seconds to reinforce the habit now.';
+  };
 }
+
 
 async function main() {
   const [daily, income, expenses, projects, targets, habits, blocks, voices, sleepLog, platformDaily, expenseTags, latestSummaryRows] = await Promise.all([
