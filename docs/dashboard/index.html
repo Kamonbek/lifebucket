@@ -218,7 +218,8 @@
           <button id="copyWeeklyCommitBtn">Copy if-then adherence check-in cmd</button>
           <button id="copyChatCheckpointBtn">Copy chat-first checkpoint (frictionless)</button>
           <button id="copyStreakRescueBtn">Copy streak-rescue row (30-second recovery)</button>
-          <button id="copyCelebrationBtn">Copy 20-second celebration reward script</button>
+          <button id="copyGoalGradientBtn">Copy next-checkpoint row (goal-gradient)</button>
+          <button id="copyCelebrationBtn">Copy celebration script (20-second reward)</button>
           <button id="confirmPastedBtn">I pasted it ✅ (close loop)</button>
         </div>
         <div class="note" id="nudgeFrictionScore">Friction score: --</div>
@@ -545,6 +546,7 @@ function initQuickLogNudge(dailyRows) {
   const copyWeeklyCommit = document.getElementById('copyWeeklyCommitBtn');
   const copyChatCheckpoint = document.getElementById('copyChatCheckpointBtn');
   const copyStreakRescue = document.getElementById('copyStreakRescueBtn');
+  const copyGoalGradient = document.getElementById('copyGoalGradientBtn');
   const copyCelebration = document.getElementById('copyCelebrationBtn');
   const confirmPasted = document.getElementById('confirmPastedBtn');
   const friction = document.getElementById('nudgeFrictionScore');
@@ -553,7 +555,7 @@ function initQuickLogNudge(dailyRows) {
   const quickWinCounter = document.getElementById('quickWinCounter');
   const streakRescueStatus = document.getElementById('streakRescueStatus');
   const celebrationPreview = document.getElementById('celebrationPreview');
-  if (!prompt || !copyMvl || !copyKamronbek || !copyYesterdayClone || !copyIfThen || !copyTonightAppointment || !copyDaily || !copyHabit || !copyBlock || !copyCmd || !copyWeeklyCommit || !copyChatCheckpoint || !copyStreakRescue || !copyCelebration || !confirmPasted || !friction || !reward || !microCommitMeter || !quickWinCounter || !streakRescueStatus || !celebrationPreview) return;
+  if (!prompt || !copyMvl || !copyKamronbek || !copyYesterdayClone || !copyIfThen || !copyTonightAppointment || !copyDaily || !copyHabit || !copyBlock || !copyCmd || !copyWeeklyCommit || !copyChatCheckpoint || !copyStreakRescue || !copyGoalGradient || !copyCelebration || !confirmPasted || !friction || !reward || !microCommitMeter || !quickWinCounter || !streakRescueStatus || !celebrationPreview) return;
 
   const weekKey = (() => {
     const d = new Date();
@@ -602,7 +604,7 @@ function initQuickLogNudge(dailyRows) {
     : 'You are warm: lock momentum by logging the full row in under 2 minutes.';
   const localHour = new Date().getHours();
   const anchorTime = localHour < 18 ? '21:30' : 'now';
-  prompt.textContent = `If-then + obstacle plan: If it is ${anchorTime}, paste one row before any scrolling; if I feel resistance, I will do the 3-number minimum first. ${tinyStep} Last logged day: ${lastLogged || 'none'}.`;
+  prompt.textContent = `Goal-Gradient Nudge v1: If it is ${anchorTime}, paste one row before any scrolling; if I feel resistance, I will do the 3-number minimum first. ${tinyStep} Last logged day: ${lastLogged || 'none'}.`;
 
   // Lower is better: combines recency gap + complexity load (Tiny Habits principle)
   const frictionScore = Math.min(100, daysSince * 12 + (daysSince >= 2 ? 14 : 6));
@@ -703,6 +705,17 @@ function initQuickLogNudge(dailyRows) {
     if (ok) {
       registerQuickWin('Streak rescue row copied', false);
       streakRescueStatus.textContent = 'Streak rescue: row copied. Paste now to protect weekly logging momentum.';
+    }
+  };
+  copyGoalGradient.onclick = async () => {
+    const towardTarget = Math.min(targetDays, weekLoggedDays + 1);
+    const row = `${ds},06:40,1.0,0.3,0.1,no,yes,goal-gradient-checkpoint-${towardTarget}of${targetDays},7,goal-gradient-v1`;
+    const ok = await copyText(row);
+    copyGoalGradient.textContent = ok ? `Copied checkpoint row (${towardTarget}/${targetDays}) ✅` : 'Copy failed';
+    if (ok) {
+      registerQuickWin(`Goal-gradient checkpoint copied (${towardTarget}/${targetDays})`, false);
+      streakRescueStatus.textContent = `Goal-gradient nudge: next paste moves this week to ${towardTarget}/${targetDays} logged days.`;
+      reward.textContent = `Reward preview: one paste advances visible weekly progress to ${towardTarget}/${targetDays}.`;
     }
   };
   copyCelebration.onclick = async () => {
