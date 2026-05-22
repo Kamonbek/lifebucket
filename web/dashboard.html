@@ -220,6 +220,7 @@
           <button id="copyStreakRescueBtn">Copy streak-rescue row (30-second recovery)</button>
           <button id="copyGoalGradientBtn">Copy next-checkpoint row (goal-gradient)</button>
           <button id="copyCelebrationBtn">Copy celebration script (20-second reward)</button>
+          <button id="copyIfOpenThenNowBtn">Copy one-tap "if-open-then-log-now" line (15s)</button>
           <button id="confirmPastedBtn">I pasted it ✅ (close loop)</button>
         </div>
         <div class="note" id="nudgeFrictionScore">Friction score: --</div>
@@ -228,7 +229,8 @@
         <div class="note" id="quickWinCounter">Quick wins this week: --</div>
         <div class="note" id="streakRescueStatus">Streak rescue: --</div>
         <div class="note" id="celebrationPreview">Celebration loop: --</div>
-        <div class="note">Marker: weekly-experiment-if-then-adherence-v2</div>
+        <div class="note" id="oneTapAnchorMetric">One-tap anchor activations (7d local): --</div>
+        <div class="note">Marker: weekly-experiment-if-then-adherence-v3-one-tap-anchor</div>
       </div>
 
       <div class="card narrow">
@@ -548,6 +550,7 @@ function initQuickLogNudge(dailyRows) {
   const copyStreakRescue = document.getElementById('copyStreakRescueBtn');
   const copyGoalGradient = document.getElementById('copyGoalGradientBtn');
   const copyCelebration = document.getElementById('copyCelebrationBtn');
+  const copyIfOpenThenNow = document.getElementById('copyIfOpenThenNowBtn');
   const confirmPasted = document.getElementById('confirmPastedBtn');
   const friction = document.getElementById('nudgeFrictionScore');
   const reward = document.getElementById('nudgeRewardPreview');
@@ -555,7 +558,8 @@ function initQuickLogNudge(dailyRows) {
   const quickWinCounter = document.getElementById('quickWinCounter');
   const streakRescueStatus = document.getElementById('streakRescueStatus');
   const celebrationPreview = document.getElementById('celebrationPreview');
-  if (!prompt || !copyMvl || !copyKamronbek || !copyYesterdayClone || !copyIfThen || !copyTonightAppointment || !copyDaily || !copyHabit || !copyBlock || !copyCmd || !copyWeeklyCommit || !copyChatCheckpoint || !copyStreakRescue || !copyGoalGradient || !copyCelebration || !confirmPasted || !friction || !reward || !microCommitMeter || !quickWinCounter || !streakRescueStatus || !celebrationPreview) return;
+  const oneTapAnchorMetric = document.getElementById('oneTapAnchorMetric');
+  if (!prompt || !copyMvl || !copyKamronbek || !copyYesterdayClone || !copyIfThen || !copyTonightAppointment || !copyDaily || !copyHabit || !copyBlock || !copyCmd || !copyWeeklyCommit || !copyChatCheckpoint || !copyStreakRescue || !copyGoalGradient || !copyCelebration || !copyIfOpenThenNow || !confirmPasted || !friction || !reward || !microCommitMeter || !quickWinCounter || !streakRescueStatus || !celebrationPreview || !oneTapAnchorMetric) return;
 
   const weekKey = (() => {
     const d = new Date();
@@ -570,8 +574,15 @@ function initQuickLogNudge(dailyRows) {
   const today = new Date().toISOString().slice(0,10);
   const copiedKey = `lifeos_log_micro_commit_copied_${today}`;
   const pastedKey = `lifeos_log_micro_commit_pasted_${today}`;
+  const oneTapKeys = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    return `lifeos_onetap_anchor_${d.toISOString().slice(0,10)}`;
+  });
+  const oneTapCount7d = () => oneTapKeys.reduce((acc, k) => acc + (localStorage.getItem(k) === '1' ? 1 : 0), 0);
   const setWinCopy = () => {
     quickWinCounter.textContent = `Quick wins this week: ${wins} (copy + paste streak signal)`;
+    oneTapAnchorMetric.textContent = `One-tap anchor activations (7d local): ${oneTapCount7d()} / 7`;
   };
   const renderMicroCommit = () => {
     const copied = localStorage.getItem(copiedKey) === '1';
@@ -719,14 +730,26 @@ function initQuickLogNudge(dailyRows) {
     }
   };
   copyCelebration.onclick = async () => {
-    const script = `After I paste my daily log row, I will celebrate for 20 seconds: say "Win. I'm the kind of person who logs daily." Then I will mark quick-win +1.`;
+    const script = `Tiny celebration (20s): Yes. Logged. I keep promises to myself. Next tiny action: close file and continue main task.`;
     const ok = await copyText(script);
     copyCelebration.textContent = ok ? 'Copied celebration script ✅' : 'Copy failed';
     if (ok) {
-      registerQuickWin('Celebration reward script copied', false);
-      celebrationPreview.textContent = 'Celebration loop: active ✅ (copy → paste → 20s celebration).';
+      registerQuickWin('Celebration script copied (reward loop primed)', false);
+      celebrationPreview.textContent = 'Celebration loop: primed ✅ Use immediately after paste to reinforce repetition.';
     }
   };
+
+  copyIfOpenThenNow.onclick = async () => {
+    const line = `If dashboard is open, then log now (15s): ${ds},23:40,7.0,2.0,0.5,no,no,if-open-then-log-now-v1,7,if-open-then-log-now-v1`;
+    const ok = await copyText(line);
+    copyIfOpenThenNow.textContent = ok ? 'Copied if-open-then-log-now ✅' : 'Copy failed';
+    if (ok) {
+      localStorage.setItem(`lifeos_onetap_anchor_${ds}`, '1');
+      registerQuickWin('One-tap anchor copied (if-open-then-act)', false);
+      reward.textContent = 'Reward preview: ✅ one-tap anchor triggered. Paste now to convert intent into a completed log.';
+    }
+  };
+
   confirmPasted.onclick = () => {
     localStorage.setItem(pastedKey, '1');
     renderMicroCommit();
